@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 const app = express();
 
 // Servir arquivos estáticos do front-end
-app.use(express.static("../frontend"));
+//app.use(express.static("../frontend"));
 
 const PORT = process.env.PORT || 3000;
 
