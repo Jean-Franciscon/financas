@@ -1,0 +1,48 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Receita {
+  id        Int      @id @default(autoincrement())
+  descricao String
+  valor     Float
+  data      DateTime @db.Date
+  categoria String
+}
+
+model Despesa {
+  id        Int      @id @default(autoincrement())
+  descricao String
+  valor     Float
+  data      DateTime @db.Date
+  categoria String
+  parcelas  Parcela[]
+}
+
+model Parcela {
+  id              Int      @id @default(autoincrement())
+  despesa_id      Int
+  descricao       String
+  valor           Float
+  data_vencimento DateTime @db.Date
+  status          String   @default("em aberto")
+  numero_parcela  Int
+  total_parcelas  Int
+  despesa         Despesa  @relation(fields: [despesa_id], references: [id], onDelete: Cascade)
+}
+
+model Meta {
+  id          Int      @id @default(autoincrement())
+  descricao   String
+  valor_meta  Float
+  valor_atual Float    @default(0)
+  tipo        String
+  data_inicio DateTime @db.Date
+  data_fim    DateTime @db.Date
+}
+
