@@ -1,5 +1,5 @@
 services:
-  - type: web
+  - type: web # Backend: tipo web com runtime node
     name: financas-pessoais-backend
     env: node
     buildCommand: "npm install"
@@ -12,15 +12,16 @@ services:
           name: financas-pessoais-db
           property: connectionString
       - key: FRONTEND_URL
-        value: https://financas-pessoais-frontend.onrender.com # Substitua pela URL real do seu frontend no Render
+        value: https://financas-pessoais-frontend.onrender.com
 
-  - type: static
+  - type: web # Frontend: O tipo DEVE ser 'web' no Blueprint
     name: financas-pessoais-frontend
+    runtime: static # Mas a propriedade 'runtime' deve ser 'static'
     buildCommand: "echo \"No build command for static site\""
-    staticPublishPath: ./financas_pessoais/frontend
+    staticPublishPath: ./frontend # Verifique se esta é a pasta correta
     autoDeploy: true
     envVars:
-      - key: BACKEND_URL_PLACEHOLDER
+      - key: BACKEND_URL_PLACEHOLDER # Essa variável NÃO é injetada. Verifique se a substituição manual já foi feita no script.js.
         fromService: 
           name: financas-pessoais-backend
           property: host
@@ -30,4 +31,3 @@ databases:
     plan: free
     databaseName: financas_pessoais
     user: financas_user
-
