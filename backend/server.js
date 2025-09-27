@@ -10,10 +10,10 @@ app.use(express.static("../frontend"));
 
 const PORT = process.env.PORT || 3000;
 
-//app.use(cors({
-//    origin: ["http://127.0.0.1:5500", "http://localhost:3000", process.env.FRONTEND_URL]
-//}));
-app.use(cors());
+app.use(cors({
+    origin: ["https://financas-pessoais-frontend.onrender.com", process.env.FRONTEND_URL]
+}));
+
 app.use(express.json());
 
 // Rotas para Receitas
