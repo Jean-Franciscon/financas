@@ -11,7 +11,7 @@ app.use(express.static("../frontend"));
 const PORT = process.env.PORT || 3000;
 
 app.use(cors({
-    origin: ["https://financas-pessoais-frontend.onrender.com", process.env.FRONTEND_URL]
+    origin: "https://financas-pessoais-frontend.onrender.com"
 }));
 
 app.use(express.json());
