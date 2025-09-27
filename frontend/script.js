@@ -44,7 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const dashboardContent = document.getElementById('dashboard-content');
         dashboardContent.innerHTML = 'Carregando dashboard...';
         try {
-            const response = await fetch('https://financas-pessoais-backend.onrender.com/dashboard');
+            const response = await fetch('https://financas-pessoais-backend-vpo0.onrender.com/dashboard');
             const data = await response.json();
             if (data.message === 'success') {
                 const { totalReceitas, totalDespesas, saldoAtual, metas } = data.data;
@@ -128,7 +128,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const categoria = document.getElementById('receita-categoria').value;
 
             try {
-                const response = await fetch('https://financas-pessoais-backend.onrender.com/receitas', {
+                const response = await fetch('https://financas-pessoais-backend-vpo0.onrender.com/receitas', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -156,7 +156,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const tabelaReceitasBody = document.querySelector('#tabela-receitas tbody');
         tabelaReceitasBody.innerHTML = '<tr><td colspan="5">Carregando receitas...</td></tr>';
         try {
-            const response = await fetch('https://financas-pessoais-backend.onrender.com/receitas');
+            const response = await fetch('https://financas-pessoais-backend-vpo0.onrender.com/receitas');
             const data = await response.json();
             if (data.message === 'success') {
                 tabelaReceitasBody.innerHTML = '';
@@ -248,7 +248,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const data_primeira_parcela = document.getElementById("despesa-data-primeira-parcela").value;
 
             try {
-                const response = await fetch('https://financas-pessoais-backend.onrender.com/despesas', {
+                const response = await fetch('https://financas-pessoais-backend-vpo0.onrender.com/despesas', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -279,7 +279,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const tabelaDespesasBody = document.querySelector('#tabela-despesas tbody');
         tabelaDespesasBody.innerHTML = '<tr><td colspan="6">Carregando despesas...</td></tr>';
         try {
-            const response = await fetch('https://financas-pessoais-backend.onrender.com/despesas');
+            const response = await fetch('https://financas-pessoais-backend-vpo0.onrender.com/despesas');
             const data = await response.json();
             if (data.message === 'success') {
                 tabelaDespesasBody.innerHTML = '';
@@ -352,7 +352,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const data_fim = document.getElementById('meta-data-fim').value;
 
             try {
-                const response = await fetch('https://financas-pessoais-backend.onrender.com/metas', {
+                const response = await fetch('https://financas-pessoais-backend-vpo0.onrender.com/metas', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -380,7 +380,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const metasCards = document.getElementById('metas-cards');
         metasCards.innerHTML = '<p>Carregando metas...</p>';
         try {
-            const response = await fetch('https://financas-pessoais-backend.onrender.com/metas');
+            const response = await fetch('https://financas-pessoais-backend-vpo0.onrender.com/metas');
             const data = await response.json();
             if (data.message === 'success') {
                 metasCards.innerHTML = '';
@@ -538,7 +538,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'warning',
             async () => {
                 try {
-                    const response = await fetch(`https://financas-pessoais-backend.onrender.com/receitas/${id}`, {
+                    const response = await fetch(`https://financas-pessoais-backend-vpo0.onrender.com/receitas/${id}`, {
                         method: 'DELETE'
                     });
                     const result = await response.json();
@@ -563,7 +563,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'info',
             async () => {
                 try {
-                    const response = await fetch(`https://financas-pessoais-backend.onrender.com/parcelas/${id}/status`, {
+                    const response = await fetch(`https://financas-pessoais-backend-vpo0.onrender.com/parcelas/${id}/status`, {
                         method: 'PUT',
                         headers: {
                             'Content-Type': 'application/json'
@@ -593,7 +593,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'warning',
             async () => {
                 try {
-                    const response = await fetch(`https://financas-pessoais-backend.onrender.com/despesas/${id}`, {
+                    const response = await fetch(`https://financas-pessoais-backend-vpo0.onrender.com/despesas/${id}`, {
                         method: 'DELETE'
                     });
                     const result = await response.json();
@@ -619,7 +619,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'warning',
             async () => {
                 try {
-                    const response = await fetch(`https://financas-pessoais-backend.onrender.com/metas/${id}`, {
+                    const response = await fetch(`https://financas-pessoais-backend-vpo0.onrender.com/metas/${id}`, {
                         method: 'DELETE'
                     });
                     const result = await response.json();
@@ -653,7 +653,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         try {
-            const response = await fetch(`https://financas-pessoais-backend.onrender.com/metas/${metaId}/valor`, {
+            const response = await fetch(`https://financas-pessoais-backend-vpo0.onrender.com/metas/${metaId}/valor`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json'
@@ -685,7 +685,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'warning',
             async () => {
                 try {
-                    const response = await fetch(`https://financas-pessoais-backend.onrender.com/receitas/${id}`, {
+                    const response = await fetch(`https://financas-pessoais-backend-vpo0.onrender.com/receitas/${id}`, {
                         method: 'DELETE'
                     });
                     const result = await response.json();
