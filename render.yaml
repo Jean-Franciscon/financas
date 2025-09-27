@@ -14,7 +14,7 @@ services:
       - key: FRONTEND_URL
         value: https://financas-pessoais-frontend.onrender.com # Substitua pela URL real do seu frontend no Render
 
-  - type: static_site
+  - type: static
     name: financas-pessoais-frontend
     buildCommand: "echo \"No build command for static site\""
     staticPublishPath: ./financas_pessoais/frontend
