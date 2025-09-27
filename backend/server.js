@@ -10,9 +10,10 @@ app.use(express.static("../frontend"));
 
 const PORT = process.env.PORT || 3000;
 
-app.use(cors({
-    origin: "https://financas-pessoais-frontend.onrender.com"
-}));
+//app.use(cors({
+ //   origin: "https://financas-pessoais-frontend.onrender.com"
+//}));
+app.use(cors());
 
 app.use(express.json());
 
