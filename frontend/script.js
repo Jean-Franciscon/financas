@@ -4,7 +4,6 @@
 
 const BACKEND_URL = 'https://financas-pessoais-backend-0dbj.onrender.com';
 
-// FUNÇÃO GLOBAL DE FECHAMENTO DE MODAL
 window.closeModal = function() {
     const existingModal = document.querySelector('.modal-overlay');
     if (existingModal) {
@@ -12,7 +11,6 @@ window.closeModal = function() {
     }
 };
 
-// FUNÇÃO GLOBAL DE TOAST
 function showToast(message, type = 'success') {
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
@@ -33,7 +31,6 @@ function showToast(message, type = 'success') {
     }, 3000);
 }
 
-// FUNÇÃO GLOBAL PARA CRIAR O MODAL
 function createModal(title, message, type = 'info', onConfirm = null) {
     const existingModal = document.querySelector('.modal-overlay');
     if (existingModal) {
@@ -84,8 +81,7 @@ function createModal(title, message, type = 'info', onConfirm = null) {
 }
 
 // ===================================================================
-// 2. FUNÇÕES DE ATUALIZAÇÃO DE DADOS (FETCH...) E DE CARREGAMENTO (LOAD...) - ELEVADAS
-//    Estas funções devem ser acessíveis pelas ações globais (delete, adicionar).
+// 2. FUNÇÕES DE CARREGAMENTO E ATUALIZAÇÃO (LOAD/FETCH) - GLOBAIS
 // ===================================================================
 
 async function loadDashboard() {
@@ -96,6 +92,12 @@ async function loadDashboard() {
         const data = await response.json();
         if (data.message === 'success') {
             const { totalReceitas, totalDespesas, saldoAtual, metas } = data.data;
+            
+            // FILTRA AS METAS REMOVIDAS DA UI DO DASHBOARD
+            const metasHtml = metas.length > 0 
+                ? 'Metas removidas da visualização.' 
+                : 'Nenhuma meta cadastrada.';
+
             dashboardContent.innerHTML = `
                 <div class="dashboard-grid">
                     <div class="dashboard-card">
@@ -110,10 +112,10 @@ async function loadDashboard() {
                         <h3>Saldo Atual</h3>
                         <p>R$ ${saldoAtual.toFixed(2)}</p>
                     </div>
-                    <div class="dashboard-card metas-summary">
+                    <div class="dashboard-card metas-summary" style="display: none;">
                         <h3>Metas Financeiras</h3>
                         <ul>
-                            ${metas.map(meta => `<li>${meta.descricao}: <span>R$ ${meta.valor_atual.toFixed(2)} / R$ ${meta.valor_meta.toFixed(2)}</span></li>`).join("")}
+                           ${metasHtml}
                         </ul>
                     </div>
                 </div>
@@ -208,7 +210,6 @@ async function fetchDespesas() {
 
 async function loadDespesas() {
     const despesasContent = document.getElementById('despesas-content');
-    // HTML de formulário e tabela...
     despesasContent.innerHTML = `
         <h3>Cadastrar Nova Despesa</h3>
         <form id="form-despesa">
@@ -264,50 +265,29 @@ async function loadDespesas() {
     await loadDashboard();
 }
 
-async function loadMetas() {
-    const metasContent = document.getElementById('metas-content');
-    // HTML de formulário e cards...
-    metasContent.innerHTML = `
-        <h3>Definir Nova Meta</h3>
-        <form id="form-meta">
-            <div><label for="meta-descricao">Descrição:</label><input type="text" id="meta-descricao" required></div>
-            <div><label for="meta-valor">Valor da Meta:</label><input type="number" id="meta-valor" step="0.01" required></div>
-            <div><label for="meta-tipo">Tipo:</label><select id="meta-tipo"><option value="mensal">Mensal</option><option value="anual">Anual</option></select></div>
-            <div><label for="meta-data-inicio">Data de Início:</label><input type="date" id="meta-data-inicio" required></div>
-            <div><label for="meta-data-fim">Data de Fim:</label><input type="date" id="meta-data-fim" required></div>
-            <button type="submit">Adicionar Meta</button>
-        </form>
-        <h3>Metas Atuais</h3>
-        <div id="metas-cards"></div>
-    `;
+// ** FUNÇÕES DE METAS COMENTADAS/REMOVIDAS **
 
-    const formMeta = document.getElementById('form-meta');
-    formMeta.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const [descricao, valor_meta, tipo, data_inicio, data_fim] = ['meta-descricao', 'meta-valor', 'meta-tipo', 'meta-data-inicio', 'meta-data-fim'].map(id => document.getElementById(id).value);
-        
-        try {
-            const response = await fetch(`${BACKEND_URL}/metas`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ descricao, valor_meta: parseFloat(valor_meta), tipo, data_inicio, data_fim })
-            });
-            const result = await response.json();
-            if (result.message === 'success') {
-                showToast('Meta adicionada com sucesso!', 'success');
-                formMeta.reset();
-                await fetchMetas();
-                await loadDashboard(); 
-            } else { showToast(`Erro ao adicionar meta: ${result.error}`, 'error'); }
-        } catch (error) { showToast(`Erro de conexão: ${error.message}`, 'error'); console.error('Erro ao adicionar meta:', error); }
-    });
-
-    await fetchMetas();
+/*
+async function fetchMetas() {
+    // Código de busca de metas removido
+    const metasCards = document.getElementById('metas-cards');
+    metasCards.innerHTML = '<p>Funcionalidade de Metas desativada.</p>';
 }
 
+async function loadMetas() {
+    const metasContent = document.getElementById('metas-content');
+    metasContent.innerHTML = `
+        <h3>Metas Financeiras</h3>
+        <p>A funcionalidade de Metas foi desativada para manter a estabilidade do sistema.</p>
+        <div id="metas-cards"></div>
+    `;
+    await fetchMetas(); // Chama a função que retorna mensagem de desativado
+}
+*/
 
 // ===================================================================
-// 4. FUNÇÕES DE AÇÃO CRUD (Chamadas pelo HTML/onlick)
+// 3. FUNÇÕES DE AÇÃO CRUD (Chamadas pelo HTML/onlick)
+//    Manter as referências, mas garantir que as funções de Metas não existam.
 // ===================================================================
 
 window.deleteReceita = async function(id) {
@@ -352,6 +332,11 @@ window.deleteDespesa = async function(id) {
     });
 };
 
+// ***********************************************
+// FUNÇÕES DE AÇÃO DE METAS COMENTADAS/REMOVIDAS
+// ***********************************************
+
+/*
 window.deleteMeta = async function(id) {
     createModal('Confirmar Exclusão', 'Tem certeza que deseja excluir esta meta?', 'warning', async () => {
         try {
@@ -359,39 +344,21 @@ window.deleteMeta = async function(id) {
             const result = await response.json();
             if (result.message === 'success') {
                 showToast('Meta excluída com sucesso!', 'success');
-                await fetchMetas(); // Atualiza lista de Metas
-                await loadDashboard(); // Atualiza o Dashboard
+                await fetchMetas(); 
+                await loadDashboard(); 
             } else { showToast(`Erro ao excluir meta: ${result.error}`, 'error'); }
         } catch (error) { showToast(`Erro de conexão: ${error.message}`, 'error'); }
     });
 };
 
 window.adicionarValorMeta = async function(event, metaId) {
-    event.preventDefault();
-    const form = event.target;
-    const valorAdicional = parseFloat(form.querySelector('input').value);
-    
-    if (valorAdicional <= 0) { showToast('Por favor, insira um valor positivo.', 'error'); return; }
-    
-    try {
-        const response = await fetch(`${BACKEND_URL}/metas/${metaId}/valor`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ valor_adicional: valorAdicional })
-        });
-        const result = await response.json();
-        if (result.message === 'success') {
-            showToast(`R$ ${valorAdicional.toFixed(2)} adicionado à meta com sucesso!`, 'success');
-            form.reset();
-            await fetchMetas(); // Atualiza lista de Metas
-            await loadDashboard(); // Atualiza o Dashboard
-        } else { showToast(`Erro ao adicionar valor à meta: ${result.error}`, 'error'); }
-    } catch (error) { showToast(`Erro de conexão: ${error.message}`, 'error'); }
+    // Lógica removida
 };
+*/
 
 
 // ===================================================================
-// 5. LÓGICA DE NAVEGAÇÃO E INICIALIZAÇÃO (DENTRO DO DOMContentLoaded)
+// 4. LÓGICA DE NAVEGAÇÃO E INICIALIZAÇÃO
 // ===================================================================
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -400,7 +367,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const navLinks = document.querySelectorAll('nav ul li a');
     const sections = document.querySelectorAll('main section');
 
-    // Funções de carregamento de conteúdo (AGORA CHAMAM AS FUNÇÕES GLOBAIS)
     async function loadContent(sectionId) {
         switch (sectionId) {
             case 'dashboard':
@@ -413,14 +379,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 await loadDespesas();
                 break;
             case 'metas':
-                await loadMetas();
+                // REMOVIDO: A TELA METAS FOI REMOVIDA
+                // await loadMetas(); 
                 break;
             default:
                 break;
         }
     }
 
-    // 3.4. Lógica de Navegação e Inicialização
+    // Lógica de Navegação
     navLinks.forEach(link => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
@@ -430,8 +397,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 section.classList.remove('active');
             });
 
-            document.getElementById(targetId).classList.add('active');
-            loadContent(targetId);
+            // Se tentar ir para #metas, não faz nada (ou mantém no dashboard)
+            if (targetId !== 'metas') {
+                document.getElementById(targetId).classList.add('active');
+                loadContent(targetId);
+            }
         });
     });
 
