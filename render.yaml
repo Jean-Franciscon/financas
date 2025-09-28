@@ -259,8 +259,6 @@ async function loadDespesas() {
     await loadDashboard();
 }
 
-// Dentro da Seção 2: Funções de Carregamento e Atualização
-
 async function fetchMetas() {
     const metasCards = document.getElementById('metas-cards');
     metasCards.innerHTML = '<p>Carregando metas...</p>';
@@ -333,18 +331,20 @@ async function loadMetas() {
             });
             const result = await response.json();
             if (result.message === 'success') {
-                showToast('Meta adicionada com sucesso!', 'success');
+                window.showToast('Meta adicionada com sucesso!', 'success');
                 formMeta.reset();
                 await fetchMetas(); // Chama a função global
                 await loadDashboard(); // Atualiza o Dashboard
-            } else { showToast(`Erro ao adicionar meta: ${result.error}`, 'error'); }
-        } catch (error) { showToast(`Erro de conexão: ${error.message}`, 'error'); console.error('Erro ao adicionar meta:', error); }
+            } else { window.showToast(`Erro ao adicionar meta: ${result.error}`, 'error'); }
+        } catch (error) { window.showToast(`Erro de conexão: ${error.message}`, 'error'); console.error('Erro ao adicionar meta:', error); }
     });
 
     await fetchMetas(); // Carrega as metas na inicialização da seção
 }
 
-// =posição 3. funções de ação crud (chamadas pelo html/onlick)
+
+// ===================================================================
+// 3. FUNÇÕES DE AÇÃO CRUD (Chamadas pelo HTML/onlick)
 // ===================================================================
 
 window.deleteReceita = async function(id) {
@@ -433,11 +433,9 @@ window.adicionarValorMeta = async function(event, metaId) {
 
 document.addEventListener('DOMContentLoaded', () => {
     
-    // VARIÁVEIS DOM LOCAIS
     const navLinks = document.querySelectorAll('nav ul li a');
     const sections = document.querySelectorAll('main section');
 
-    // Funções de carregamento de conteúdo (AGORA CHAMAM AS FUNÇÕES GLOBAIS)
     async function loadContent(sectionId) {
         switch (sectionId) {
             case 'dashboard':
