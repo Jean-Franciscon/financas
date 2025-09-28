@@ -259,6 +259,8 @@ async function loadDespesas() {
     await loadDashboard();
 }
 
+// Dentro da Seção 2: Funções de Carregamento e Atualização
+
 async function fetchMetas() {
     const metasCards = document.getElementById('metas-cards');
     metasCards.innerHTML = '<p>Carregando metas...</p>';
@@ -341,7 +343,6 @@ async function loadMetas() {
 
     await fetchMetas(); // Carrega as metas na inicialização da seção
 }
-
 
 // =posição 3. funções de ação crud (chamadas pelo html/onlick)
 // ===================================================================
