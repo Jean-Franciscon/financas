@@ -440,311 +440,246 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Sistema de Modal e Toast Moderno
-    function createModal(title, message, type = 'info', onConfirm = null) {
-        // Remove modal existente se houver
-        const existingModal = document.querySelector('.modal-overlay');
-        if (existingModal) {
-            existingModal.remove();
-        }
 
-        const modalOverlay = document.createElement('div');
-        modalOverlay.className = 'modal-overlay';
-        
-        const modal = document.createElement('div');
-        modal.className = `modal modal-${type}`;
-        
-        const modalContent = `
-            <div class="modal-header">
-                <h3>${title}</h3>
-                <button class="modal-close" onclick="closeModal()">&times;</button>
-            </div>
-            <div class="modal-body">
-                <p>${message}</p>
-            </div>
-            <div class="modal-footer">
-                ${onConfirm ? 
-                    `<button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
-                     <button class="btn btn-primary" onclick="confirmModal()">Confirmar</button>` :
-                    `<button class="btn btn-primary" onclick="closeModal()">OK</button>`
-                }
-            </div>
-        `;
-        
-        modal.innerHTML = modalContent;
-        modalOverlay.appendChild(modal);
-        document.body.appendChild(modalOverlay);
-        
-        // Animação de entrada
-        setTimeout(() => {
-            modalOverlay.classList.add('show');
-            modal.classList.add('show');
-        }, 10);
-        
-        // Configurar callback de confirmação
-        if (onConfirm) {
-            window.confirmModal = () => {
-                onConfirm();
-                closeModal();
-            };
-        }
-        
-        // Fechar modal ao clicar fora
-        modalOverlay.addEventListener('click', (e) => {
-            if (e.target === modalOverlay) {
-                closeModal();
-            }
-        });
+// Sistema de Modal e Toast Moderno
+function createModal(title, message, type = 'info', onConfirm = null) {
+    // 1. Remove modal existente se houver
+    const existingModal = document.querySelector('.modal-overlay');
+    if (existingModal) {
+        existingModal.remove();
     }
 
-    // Função auxiliar para fechar o modal
-    function closeModal(modalContainer) {
-        if (modalContainer) {
-            modalContainer.remove();
-        }
-    }
-
-    function showToast(message, type = 'success') {
-        const toast = document.createElement('div');
-        toast.className = `toast toast-${type}`;
-        toast.innerHTML = `
-            <div class="toast-content">
-                <span class="toast-icon">${type === 'success' ? '✓' : type === 'error' ? '✗' : 'ℹ'}</span>
-                <span class="toast-message">${message}</span>
-            </div>
-        `;
-        
-        document.body.appendChild(toast);
-        
-        // Animação de entrada
-        setTimeout(() => {
-            toast.classList.add('show');
-        }, 10);
-        
-        // Remover após 3 segundos
-        setTimeout(() => {
-            toast.classList.remove('show');
-            setTimeout(() => {
-                toast.remove();
-            }, 300);
-        }, 3000);
-    }
-
-    // Funções para exclusão de itens com modal moderno
-    window.deleteReceita = async function(id) {
-        createModal(
-            'Confirmar Exclusão',
-            'Tem certeza que deseja excluir esta receita? Esta ação não pode ser desfeita.',
-            'warning',
-            async () => {
-                try {
-                    const response = await fetch(`https://financas-pessoais-backend-0dbj.onrender.com/receitas/${id}`, {
-                        method: 'DELETE'
-                    });
-                    const result = await response.json();
-                    if (result.message === 'success') {
-                        showToast('Receita excluída com sucesso!', 'success');
-                        await fetchReceitas();
-                    } else {
-                        showToast(`Erro ao excluir receita: ${result.error}`, 'error');
-                    }
-                } catch (error) {
-                    showToast(`Erro de conexão: ${error.message}`, 'error');
-                    console.error('Erro ao excluir receita:', error);
-                }
+    const modalOverlay = document.createElement('div');
+    modalOverlay.className = 'modal-overlay';
+    
+    const modal = document.createElement('div');
+    modal.className = `modal modal-${type}`;
+    
+    const modalContent = `
+        <div class="modal-header">
+            <h3>${title}</h3>
+            <button class="modal-close" onclick="window.closeModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p>${message}</p>
+        </div>
+        <div class="modal-footer">
+            ${onConfirm ? 
+                `<button class="btn btn-secondary" onclick="window.closeModal()">Cancelar</button>
+                 <button class="btn btn-primary" id="confirm-action-btn">Confirmar</button>` :
+                `<button class="btn btn-primary" onclick="window.closeModal()">OK</button>`
             }
-        );
-    };
-
-    window.markParcelaAsPaid = async function(id) {
-        createModal(
-            'Confirmar Pagamento',
-            'Tem certeza que deseja marcar esta parcela como paga?',
-            'info',
-            async () => {
-                try {
-                    const response = await fetch(`https://financas-pessoais-backend-0dbj.onrender.com/parcelas/${id}/status`, {
-                        method: 'PUT',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({ status: 'paga' })
-                    });
-                    const result = await response.json();
-                    if (result.message === 'success') {
-                        showToast("Parcela marcada como paga com sucesso!", "success");
-                        await fetchDespesas();
-                        await loadDashboard(); // Atualizar o dashboard
-                    } else {
-                        showToast(`Erro ao marcar parcela como paga: ${result.error}`, 'error');
-                    }
-                } catch (error) {
-                    showToast(`Erro de conexão: ${error.message}`, 'error');
-                    console.error('Erro ao marcar parcela como paga:', error);
-                }
-            }
-        );
-    };
-
-    window.deleteDespesa = async function(id) {
-        createModal(
-            'Confirmar Exclusão',
-            'Tem certeza que deseja excluir esta despesa? Esta ação não pode ser desfeita.',
-            'warning',
-            async () => {
-                try {
-                    const response = await fetch(`https://financas-pessoais-backend-0dbj.onrender.com/despesas/${id}`, {
-                        method: 'DELETE'
-                    });
-                    const result = await response.json();
-                    if (result.message === 'success') {
-                        showToast('Despesa excluída com sucesso!', 'success');
-                        await fetchDespesas();
-                        await loadDashboard();
-                    } else {
-                        showToast(`Erro ao excluir despesa: ${result.error}`, 'error');
-                    }
-                } catch (error) {
-                    showToast(`Erro de conexão: ${error.message}`, 'error');
-                    console.error('Erro ao excluir despesa:', error);
-                }
-            }
-        );
-    };
-
-    window.deleteMeta = async function(id) {
-        createModal(
-            'Confirmar Exclusão',
-            'Tem certeza que deseja excluir esta meta? Esta ação não pode ser desfeita.',
-            'warning',
-            async () => {
-                try {
-                    const response = await fetch(`https://financas-pessoais-backend-0dbj.onrender.com/metas/${id}`, {
-                        method: 'DELETE'
-                    });
-                    const result = await response.json();
-                    if (result.message === 'success') {
-                        showToast('Meta excluída com sucesso!', 'success');
-                        await fetchMetas();
-                    } else {
-                        showToast(`Erro ao excluir meta: ${result.error}`, 'error');
-                    }
-                } catch (error) {
-                    showToast(`Erro de conexão: ${error.message}`, 'error');
-                    console.error('Erro ao excluir meta:', error);
-                }
-            }
-        );
-    };
-
-    // Função para adicionar valor às metas com toast moderno
-
-
-
-
-    window.adicionarValorMeta = async function(event, metaId) {
-        event.preventDefault();
-        const form = event.target;
-        const valorAdicional = parseFloat(form.querySelector('input').value);
-        
-        if (valorAdicional <= 0) {
-            showToast('Por favor, insira um valor positivo.', 'error');
-            return;
-        }
-        
-        try {
-            const response = await fetch(`https://financas-pessoais-backend-0dbj.onrender.com/metas/${metaId}/valor`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ valor_adicional: valorAdicional })
-            });
-            const result = await response.json();
-            if (result.message === 'success') {
-                showToast(`R$ ${valorAdicional.toFixed(2)} adicionado à meta com sucesso!`, 'success');
-                form.reset();
-                await fetchMetas();
-            } else {
-                showToast(`Erro ao adicionar valor à meta: ${result.error}`, 'error');
-            }
-        } catch (error) {
-            showToast(`Erro de conexão: ${error.message}`, 'error');
-            console.error('Erro ao adicionar valor à meta:', error);
-        }
-    };
-});
-
-
-
-
-    window.deleteReceita = async function(id) {
-        createModal(
-            'Confirmar Exclusão',
-            'Tem certeza que deseja excluir esta receita? Esta ação não pode ser desfeita.',
-            'warning',
-            async () => {
-                try {
-                    const response = await fetch(`https://financas-pessoais-backend-0dbj.onrender.com/receitas/${id}`, {
-                        method: 'DELETE'
-                    });
-                    const result = await response.json();
-                    if (result.message === 'success') {
-                        showToast('Receita excluída com sucesso!', 'success');
-                        await fetchReceitas();
-                    } else {
-                        showToast(`Erro ao excluir receita: ${result.error}`, 'error');
-                    }
-                } catch (error) {
-                    showToast(`Erro de conexão: ${error.message}`, 'error');
-                    console.error('Erro ao excluir receita:', error);
-                }
-            }
-        );
-    };
-
-
-
-
-
-
-function createModal(title, message, type, onConfirm) {
-    const modalContainer = document.createElement("div");
-    modalContainer.classList.add("modal-container");
-
-    const modalContent = document.createElement("div");
-    modalContent.classList.add("modal-content", type);
-
-    modalContent.innerHTML = `
-        <span class="close-button">&times;</span>
-        <h2>${title}</h2>
-        <p>${message}</p>
-        <div class="modal-buttons">
-            <button class="confirm-button">Confirmar</button>
-            <button class="cancel-button">Cancelar</button>
         </div>
     `;
-
-    modalContainer.appendChild(modalContent);
-    document.body.appendChild(modalContainer);
-
-    const closeButton = modalContent.querySelector(".close-button");
-    const confirmButton = modalContent.querySelector(".confirm-button");
-    const cancelButton = modalContent.querySelector(".cancel-button");
-
-
-
-    closeButton.addEventListener("click", () => closeModal(modalContainer));
-    cancelButton.addEventListener("click", () => closeModal(modalContainer));
-    confirmButton.addEventListener("click", () => {
-        onConfirm();
-        closeModal(modalContainer);
-    });
-
-    modalContainer.addEventListener("click", (e) => {
-        if (e.target === modalContainer) {
-            closeModal(modalContainer);
+    
+    modal.innerHTML = modalContent;
+    modalOverlay.appendChild(modal);
+    document.body.appendChild(modalOverlay);
+    
+    // Animação de entrada
+    setTimeout(() => {
+        modalOverlay.classList.add('show');
+        modal.classList.add('show');
+    }, 10);
+    
+    // 2. Configurar callback de confirmação e fechamento
+    if (onConfirm) {
+        document.getElementById('confirm-action-btn').onclick = async () => {
+            await onConfirm(); // Executa a função de confirmação (que faz a chamada de API)
+            window.closeModal(); // FECHA O MODAL APÓS A AÇÃO
+        };
+    }
+    
+    // Fechar modal ao clicar fora
+    modalOverlay.addEventListener('click', (e) => {
+        if (e.target === modalOverlay) {
+            window.closeModal();
         }
     });
 }
 
+// Função auxiliar para fechar o modal (AGORA EXPOSTA GLOBALMENTE)
+window.closeModal = function() {
+    const existingModal = document.querySelector('.modal-overlay');
+    if (existingModal) {
+        existingModal.remove();
+    }
+};
+
+function showToast(message, type = 'success') {
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.innerHTML = `
+        <div class="toast-content">
+            <span class="toast-icon">${type === 'success' ? '✓' : type === 'error' ? '✗' : 'ℹ'}</span>
+            <span class="toast-message">${message}</span>
+        </div>
+    `;
+    
+    document.body.appendChild(toast);
+    
+    // Animação de entrada
+    setTimeout(() => {
+        toast.classList.add('show');
+    }, 10);
+    
+    // Remover após 3 segundos
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => {
+            toast.remove();
+        }, 300);
+    }, 3000);
+}
+
+// Funções de Ação (DELETE / PUT) - Corrigidas para Fechar o Modal
+
+const BACKEND_URL = 'https://financas-pessoais-backend-0dbj.onrender.com';
+
+window.deleteReceita = async function(id) {
+    createModal(
+        'Confirmar Exclusão',
+        'Tem certeza que deseja excluir esta receita? Esta ação não pode ser desfeita.',
+        'warning',
+        async () => {
+            try {
+                const response = await fetch(`${BACKEND_URL}/receitas/${id}`, {
+                    method: 'DELETE'
+                });
+                const result = await response.json();
+                if (result.message === 'success') {
+                    showToast('Receita excluída com sucesso!', 'success');
+                    await fetchReceitas();
+                    await loadDashboard(); 
+                } else {
+                    showToast(`Erro ao excluir receita: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                showToast(`Erro de conexão: ${error.message}`, 'error');
+                console.error('Erro ao excluir receita:', error);
+            }
+        }
+    );
+};
+
+window.markParcelaAsPaid = async function(id) {
+    createModal(
+        'Confirmar Pagamento',
+        'Tem certeza que deseja marcar esta parcela como paga?',
+        'info',
+        async () => {
+            try {
+                const response = await fetch(`${BACKEND_URL}/parcelas/${id}/status`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ status: 'paga' })
+                });
+                const result = await response.json();
+                if (result.message === 'success') {
+                    showToast("Parcela marcada como paga com sucesso!", "success");
+                    await fetchDespesas();
+                    await loadDashboard(); // Atualizar o dashboard
+                } else {
+                    showToast(`Erro ao marcar parcela como paga: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                showToast(`Erro de conexão: ${error.message}`, 'error');
+                console.error('Erro ao marcar parcela como paga:', error);
+            }
+        }
+    );
+};
+
+window.deleteDespesa = async function(id) {
+    createModal(
+        'Confirmar Exclusão',
+        'Tem certeza que deseja excluir esta despesa? Esta ação não pode ser desfeita.',
+        'warning',
+        async () => {
+            try {
+                const response = await fetch(`${BACKEND_URL}/despesas/${id}`, {
+                    method: 'DELETE'
+                });
+                const result = await response.json();
+                if (result.message === 'success') {
+                    showToast('Despesa excluída com sucesso!', 'success');
+                    await fetchDespesas();
+                    await loadDashboard();
+                } else {
+                    showToast(`Erro ao excluir despesa: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                showToast(`Erro de conexão: ${error.message}`, 'error');
+                console.error('Erro ao excluir despesa:', error);
+            }
+        }
+    );
+};
+
+window.deleteMeta = async function(id) {
+    createModal(
+        'Confirmar Exclusão',
+        'Tem certeza que deseja excluir esta meta? Esta ação não pode ser desfeita.',
+        'warning',
+        async () => {
+            try {
+                const response = await fetch(`${BACKEND_URL}/metas/${id}`, {
+                    method: 'DELETE'
+                });
+                const result = await response.json();
+                if (result.message === 'success') {
+                    showToast('Meta excluída com sucesso!', 'success');
+                    await fetchMetas();
+                } else {
+                    showToast(`Erro ao excluir meta: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                showToast(`Erro de conexão: ${error.message}`, 'error');
+                console.error('Erro ao excluir meta:', error);
+            }
+        }
+    );
+};
+
+// Função para adicionar valor às metas com toast moderno
+window.adicionarValorMeta = async function(event, metaId) {
+    event.preventDefault();
+    const form = event.target;
+    const valorAdicional = parseFloat(form.querySelector('input').value);
+    
+    if (valorAdicional <= 0) {
+        showToast('Por favor, insira um valor positivo.', 'error');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`${BACKEND_URL}/metas/${metaId}/valor`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ valor_adicional: valorAdicional })
+        });
+        const result = await response.json();
+        if (result.message === 'success') {
+            showToast(`R$ ${valorAdicional.toFixed(2)} adicionado à meta com sucesso!`, 'success');
+            form.reset();
+            await fetchMetas();
+        } else {
+            showToast(`Erro ao adicionar valor à meta: ${result.error}`, 'error');
+        }
+    } catch (error) {
+        showToast(`Erro de conexão: ${error.message}`, 'error');
+        console.error('Erro ao adicionar valor à meta:', error);
+    }
+};
+
+// Exponha o closeModal no escopo global para o botão "X" e "Cancelar" funcionarem.
+window.closeModal = function() {
+    const existingModal = document.querySelector('.modal-overlay');
+    if (existingModal) {
+        existingModal.remove();
+    }
+};
