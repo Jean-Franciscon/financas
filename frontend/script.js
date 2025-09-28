@@ -1,6 +1,248 @@
 document.addEventListener('DOMContentLoaded', () => {
     const navLinks = document.querySelectorAll('nav ul li a');
     const sections = document.querySelectorAll('main section');
+    const BACKEND_URL = 'https://financas-pessoais-backend-0dbj.onrender.com';
+
+// Exponha o closeModal no escopo global para os botões do Modal
+window.closeModal = function() {
+    const existingModal = document.querySelector('.modal-overlay');
+    if (existingModal) {
+        existingModal.remove();
+    }
+};
+
+function showToast(message, type = 'success') {
+    // [CÓDIGO DA FUNÇÃO showToast AQUI - Não foi incluído na alteração, 
+    // mas deve estar presente e sem erros no seu arquivo]
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.innerHTML = `
+        <div class="toast-content">
+            <span class="toast-icon">${type === 'success' ? '✓' : type === 'error' ? '✗' : 'ℹ'}</span>
+            <span class="toast-message">${message}</span>
+        </div>
+    `;
+    
+    document.body.appendChild(toast);
+    
+    // Animação de entrada
+    setTimeout(() => {
+        toast.classList.add('show');
+    }, 10);
+    
+    // Remover após 3 segundos
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => {
+            toast.remove();
+        }, 300);
+    }, 3000);
+}
+
+// Funções de Modal e Ação (Expostas ao escopo global)
+function createModal(title, message, type = 'info', onConfirm = null) {
+    // [CÓDIGO DA FUNÇÃO createModal AQUI]
+    const existingModal = document.querySelector('.modal-overlay');
+    if (existingModal) {
+        existingModal.remove();
+    }
+
+    const modalOverlay = document.createElement('div');
+    modalOverlay.className = 'modal-overlay';
+    
+    const modal = document.createElement('div');
+    modal.className = `modal modal-${type}`;
+    
+    const modalContent = `
+        <div class="modal-header">
+            <h3>${title}</h3>
+            <button class="modal-close" onclick="window.closeModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p>${message}</p>
+        </div>
+        <div class="modal-footer">
+            ${onConfirm ? 
+                `<button class="btn btn-secondary" onclick="window.closeModal()">Cancelar</button>
+                 <button class="btn btn-primary" id="confirm-action-btn">Confirmar</button>` :
+                `<button class="btn btn-primary" onclick="window.closeModal()">OK</button>`
+            }
+        </div>
+    `;
+    
+    modal.innerHTML = modalContent;
+    modalOverlay.appendChild(modal);
+    document.body.appendChild(modalOverlay);
+    
+    // Animação de entrada
+    setTimeout(() => {
+        modalOverlay.classList.add('show');
+        modal.classList.add('show');
+    }, 10);
+    
+    if (onConfirm) {
+        document.getElementById('confirm-action-btn').onclick = async () => {
+            await onConfirm();
+            window.closeModal(); 
+        };
+    }
+    
+    modalOverlay.addEventListener('click', (e) => {
+        if (e.target === modalOverlay) {
+            window.closeModal();
+        }
+    });
+}
+
+window.deleteReceita = async function(id) {
+    createModal(
+        'Confirmar Exclusão',
+        'Tem certeza que deseja excluir esta receita? Esta ação não pode ser desfeita.',
+        'warning',
+        async () => {
+            try {
+                const response = await fetch(`${BACKEND_URL}/receitas/${id}`, {
+                    method: 'DELETE'
+                });
+                const result = await response.json();
+                if (result.message === 'success') {
+                    showToast('Receita excluída com sucesso!', 'success');
+                    await fetchReceitas();
+                    await loadDashboard(); 
+                } else {
+                    showToast(`Erro ao excluir receita: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                showToast(`Erro de conexão: ${error.message}`, 'error');
+                console.error('Erro ao excluir receita:', error);
+            }
+        }
+    );
+};
+
+// [ADICIONAR AQUI AS OUTRAS FUNÇÕES DE AÇÃO: markParcelaAsPaid, deleteDespesa, deleteMeta, adicionarValorMeta]
+// Certifique-se de que todas elas usem ${BACKEND_URL}
+// ...
+window.markParcelaAsPaid = async function(id) {
+    createModal(
+        'Confirmar Pagamento',
+        'Tem certeza que deseja marcar esta parcela como paga?',
+        'info',
+        async () => {
+            try {
+                const response = await fetch(`${BACKEND_URL}/parcelas/${id}/status`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ status: 'paga' })
+                });
+                const result = await response.json();
+                if (result.message === 'success') {
+                    showToast("Parcela marcada como paga com sucesso!", "success");
+                    await fetchDespesas();
+                    await loadDashboard(); // Atualizar o dashboard
+                } else {
+                    showToast(`Erro ao marcar parcela como paga: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                showToast(`Erro de conexão: ${error.message}`, 'error');
+                console.error('Erro ao marcar parcela como paga:', error);
+            }
+        }
+    );
+};
+
+window.deleteDespesa = async function(id) {
+    createModal(
+        'Confirmar Exclusão',
+        'Tem certeza que deseja excluir esta despesa? Esta ação não pode ser desfeita.',
+        'warning',
+        async () => {
+            try {
+                const response = await fetch(`${BACKEND_URL}/despesas/${id}`, {
+                    method: 'DELETE'
+                });
+                const result = await response.json();
+                if (result.message === 'success') {
+                    showToast('Despesa excluída com sucesso!', 'success');
+                    await fetchDespesas();
+                    await loadDashboard();
+                } else {
+                    showToast(`Erro ao excluir despesa: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                showToast(`Erro de conexão: ${error.message}`, 'error');
+                console.error('Erro ao excluir despesa:', error);
+            }
+        }
+    );
+};
+
+window.deleteMeta = async function(id) {
+    createModal(
+        'Confirmar Exclusão',
+        'Tem certeza que deseja excluir esta meta? Esta ação não pode ser desfeita.',
+        'warning',
+        async () => {
+            try {
+                const response = await fetch(`${BACKEND_URL}/metas/${id}`, {
+                    method: 'DELETE'
+                });
+                const result = await response.json();
+                if (result.message === 'success') {
+                    showToast('Meta excluída com sucesso!', 'success');
+                    await fetchMetas();
+                } else {
+                    showToast(`Erro ao excluir meta: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                showToast(`Erro de conexão: ${error.message}`, 'error');
+                console.error('Erro ao excluir meta:', error);
+            }
+        }
+    );
+};
+
+window.adicionarValorMeta = async function(event, metaId) {
+    event.preventDefault();
+    const form = event.target;
+    const valorAdicional = parseFloat(form.querySelector('input').value);
+    
+    if (valorAdicional <= 0) {
+        showToast('Por favor, insira um valor positivo.', 'error');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`${BACKEND_URL}/metas/${metaId}/valor`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ valor_adicional: valorAdicional })
+        });
+        const result = await response.json();
+        if (result.message === 'success') {
+            showToast(`R$ ${valorAdicional.toFixed(2)} adicionado à meta com sucesso!`, 'success');
+            form.reset();
+            await fetchMetas();
+        } else {
+            showToast(`Erro ao adicionar valor à meta: ${result.error}`, 'error');
+        }
+    } catch (error) {
+        showToast(`Erro de conexão: ${error.message}`, 'error');
+        console.error('Erro ao adicionar valor à meta:', error);
+    }
+};
+
+// ===================================================================
+// CÓDIGO PRINCIPAL (EVENTO DOMContentLoaded)
+// ===================================================================
+document.addEventListener('DOMContentLoaded', () => {
+    // ... [O SEU CÓDIGO DE NAVEGAÇÃO E loadContent(sectionId) VEM AQUI]
+    const navLinks = document.querySelectorAll('nav ul li a');
+    const sections = document.querySelectorAll('main section');
 
     navLinks.forEach(link => {
         link.addEventListener('click', (e) => {
@@ -37,6 +279,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 break;
         }
     }
+    // [ADICIONAR AQUI SUAS FUNÇÕES loadDashboard, loadReceitas, loadDespesas, loadMetas, fetchReceitas, fetchDespesas, fetchMetas]
+    // OBSERVAÇÃO: Mude todas as chamadas `fetch` nessas funções para usar `${BACKEND_URL}`
 
     // --- Funções para carregar e exibir dados --- //
 
@@ -44,7 +288,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const dashboardContent = document.getElementById('dashboard-content');
         dashboardContent.innerHTML = 'Carregando dashboard...';
         try {
-            const response = await fetch('https://financas-pessoais-backend-0dbj.onrender.com/dashboard');
+            const response = await fetch(`${BACKEND_URL}/dashboard`);
             const data = await response.json();
             if (data.message === 'success') {
                 const { totalReceitas, totalDespesas, saldoAtual, metas } = data.data;
@@ -114,8 +358,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </tr>
                 </thead>
                 <tbody>
-                    <!-- Receitas serão carregadas aqui -->
-                </tbody>
+                    </tbody>
             </table>
         `;
 
@@ -128,7 +371,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const categoria = document.getElementById('receita-categoria').value;
 
             try {
-                const response = await fetch('https://financas-pessoais-backend-0dbj.onrender.com/receitas', {
+                const response = await fetch(`${BACKEND_URL}/receitas`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -140,6 +383,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     showToast('Receita adicionada com sucesso!', 'success');
                     formReceita.reset();
                     await fetchReceitas();
+                    await loadDashboard(); 
                 } else {
                     showToast(`Erro ao adicionar receita: ${result.error}`, 'error');
                 }
@@ -156,7 +400,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const tabelaReceitasBody = document.querySelector('#tabela-receitas tbody');
         tabelaReceitasBody.innerHTML = '<tr><td colspan="5">Carregando receitas...</td></tr>';
         try {
-            const response = await fetch('https://financas-pessoais-backend-0dbj.onrender.com/receitas');
+            const response = await fetch(`${BACKEND_URL}/receitas`);
             const data = await response.json();
             if (data.message === 'success') {
                 tabelaReceitasBody.innerHTML = '';
@@ -167,7 +411,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     row.insertCell(2).textContent = receita.data;
                     row.insertCell(3).textContent = receita.categoria;
                     const actionsCell = row.insertCell(4);
-                    actionsCell.innerHTML = `<button class="btn-delete" onclick="deleteReceita(${receita.id})">Excluir</button>`;
+                    actionsCell.innerHTML = `<button class="btn-delete" onclick="window.deleteReceita(${receita.id})">Excluir</button>`;
                 });
             } else {
                 tabelaReceitasBody.innerHTML = `<tr><td colspan="5">Erro ao carregar receitas: ${data.error}</td></tr>`;
@@ -177,7 +421,7 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('Erro ao buscar receitas:', error);
         }
     }
-
+    
     async function loadDespesas() {
         const despesasContent = document.getElementById('despesas-content');
         despesasContent.innerHTML = `
@@ -224,8 +468,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </tr>
                 </thead>
                 <tbody>
-                    <!-- Despesas serão carregadas aqui -->
-                </tbody>
+                    </tbody>
             </table>
         `;
 
@@ -248,7 +491,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const data_primeira_parcela = document.getElementById("despesa-data-primeira-parcela").value;
 
             try {
-                const response = await fetch('https://financas-pessoais-backend-0dbj.onrender.com/despesas', {
+                const response = await fetch(`${BACKEND_URL}/despesas`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -272,14 +515,14 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         await fetchDespesas();
-                    await loadDashboard();
+        await loadDashboard();
     }
 
     async function fetchDespesas() {
         const tabelaDespesasBody = document.querySelector('#tabela-despesas tbody');
         tabelaDespesasBody.innerHTML = '<tr><td colspan="6">Carregando despesas...</td></tr>';
         try {
-            const response = await fetch('https://financas-pessoais-backend-0dbj.onrender.com/despesas');
+            const response = await fetch(`${BACKEND_URL}/despesas`);
             const data = await response.json();
             if (data.message === 'success') {
                 tabelaDespesasBody.innerHTML = '';
@@ -292,10 +535,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     const statusCell = row.insertCell(4);
                     statusCell.textContent = despesa.status;
                     if (despesa.status === 'em aberto') {
-                        statusCell.innerHTML += ` <button class="btn-mark-paid" onclick="markParcelaAsPaid(${despesa.id})">Pagar</button>`;
+                        statusCell.innerHTML += ` <button class="btn-mark-paid" onclick="window.markParcelaAsPaid(${despesa.id})">Pagar</button>`;
                     }
                     const actionsCell = row.insertCell(5);
-                    actionsCell.innerHTML = `<button class="btn-delete" onclick="deleteDespesa(${despesa.despesa_id})">Excluir Despesa</button>`;
+                    actionsCell.innerHTML = `<button class="btn-delete" onclick="window.deleteDespesa(${despesa.despesa_id})">Excluir Despesa</button>`;
                 });
             } else {
                 tabelaDespesasBody.innerHTML = `<tr><td colspan="6">Erro ao carregar despesas: ${data.error}</td></tr>`;
@@ -305,7 +548,7 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('Erro ao buscar despesas:', error);
         }
     }
-
+    
     async function loadMetas() {
         const metasContent = document.getElementById('metas-content');
         metasContent.innerHTML = `
@@ -338,8 +581,7 @@ document.addEventListener('DOMContentLoaded', () => {
             </form>
             <h3>Metas Atuais</h3>
             <div id="metas-cards">
-                <!-- Metas serão carregadas aqui -->
-            </div>
+                </div>
         `;
 
         const formMeta = document.getElementById('form-meta');
@@ -352,7 +594,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const data_fim = document.getElementById('meta-data-fim').value;
 
             try {
-                const response = await fetch('https://financas-pessoais-backend-0dbj.onrender.com/metas', {
+                const response = await fetch(`${BACKEND_URL}/metas`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -364,6 +606,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     showToast('Meta adicionada com sucesso!', 'success');
                     formMeta.reset();
                     await fetchMetas();
+                    await loadDashboard(); 
                 } else {
                     showToast(`Erro ao adicionar meta: ${result.error}`, 'error');
                 }
@@ -380,7 +623,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const metasCards = document.getElementById('metas-cards');
         metasCards.innerHTML = '<p>Carregando metas...</p>';
         try {
-            const response = await fetch('https://financas-pessoais-backend-0dbj.onrender.com/metas');
+            const response = await fetch(`${BACKEND_URL}/metas`);
             const data = await response.json();
             if (data.message === 'success') {
                 metasCards.innerHTML = '';
@@ -426,7 +669,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             <small>Período: ${meta.data_inicio} até ${meta.data_fim}</small>
                         </div>
                         <div class="meta-actions">
-                         <form class="form-adicionar-valor" onsubmit="adicionarValorMeta(event, ${meta.id})">\n                                <input type="number" step="0.01" placeholder="Valor a adicionar" required>\n                                <button type="submit">Adicionar</button>\n                            </form>\n                            <button class="btn-delete" onclick="deleteMeta(${meta.id})">Excluir Meta</button>
+                         <form class="form-adicionar-valor" onsubmit="window.adicionarValorMeta(event, ${meta.id})">\n                                <input type="number" step="0.01" placeholder="Valor a adicionar" required>\n                                <button type="submit">Adicionar</button>\n                            </form>\n                            <button class="btn-delete" onclick="window.deleteMeta(${meta.id})">Excluir Meta</button>
                         </div>
                     `;
                     metasCards.appendChild(metaCard);
@@ -439,7 +682,9 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('Erro ao buscar metas:', error);
         }
     }
-
+    
+// Remova ou substitua todo o código de modal/toast/delete que está no final do seu script.js 
+// pelo código abaixo para garantir a consistência.
 
 // Sistema de Modal e Toast Moderno
 function createModal(title, message, type = 'info', onConfirm = null) {
@@ -683,3 +928,6 @@ window.closeModal = function() {
         existingModal.remove();
     }
 };
+
+});
+});
