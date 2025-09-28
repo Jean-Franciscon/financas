@@ -1,5 +1,5 @@
 // ===================================================================
-// 1. VARIÁVEIS E FUNÇÕES GLOBAIS DE SUPORTE
+// 1. VARIÁVEIS E FUNÇÕES GLOBAIS DE SUPORTE (MODAL, TOAST, URL)
 // ===================================================================
 
 const BACKEND_URL = 'https://financas-pessoais-backend-0dbj.onrender.com';
@@ -204,7 +204,6 @@ async function fetchDespesas() {
 
 async function loadDespesas() {
     const despesasContent = document.getElementById('despesas-content');
-    // HTML de formulário e tabela...
     despesasContent.innerHTML = `
         <h3>Cadastrar Nova Despesa</h3>
         <form id="form-despesa">
@@ -345,7 +344,7 @@ async function loadMetas() {
 
 
 // ===================================================================
-// 5. FUNÇÕES DE AÇÃO CRUD (Chamadas pelo HTML/onlick)
+// 3. FUNÇÕES DE AÇÃO CRUD (Chamadas pelo HTML/onlick)
 // ===================================================================
 
 window.deleteReceita = async function(id) {
