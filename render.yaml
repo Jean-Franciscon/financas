@@ -4,7 +4,6 @@
 
 const BACKEND_URL = 'https://financas-pessoais-backend-0dbj.onrender.com';
 
-// FUNÇÃO GLOBAL DE FECHAMENTO DE MODAL
 window.closeModal = function() {
     const existingModal = document.querySelector('.modal-overlay');
     if (existingModal) {
@@ -12,7 +11,6 @@ window.closeModal = function() {
     }
 };
 
-// FUNÇÃO GLOBAL DE TOAST
 function showToast(message, type = 'success') {
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
@@ -33,7 +31,6 @@ function showToast(message, type = 'success') {
     }, 3000);
 }
 
-// FUNÇÃO GLOBAL PARA CRIAR O MODAL
 function createModal(title, message, type = 'info', onConfirm = null) {
     const existingModal = document.querySelector('.modal-overlay');
     if (existingModal) {
@@ -85,7 +82,6 @@ function createModal(title, message, type = 'info', onConfirm = null) {
 
 // ===================================================================
 // 2. FUNÇÕES DE CARREGAMENTO E ATUALIZAÇÃO (LOAD/FETCH) - AGORA GLOBAIS
-//    Obrigatório para que as ações (delete/put) possam chamá-las.
 // ===================================================================
 
 async function loadDashboard() {
@@ -208,7 +204,6 @@ async function fetchDespesas() {
 
 async function loadDespesas() {
     const despesasContent = document.getElementById('despesas-content');
-    // HTML de formulário e tabela...
     despesasContent.innerHTML = `
         <h3>Cadastrar Nova Despesa</h3>
         <form id="form-despesa">
@@ -338,13 +333,13 @@ async function loadMetas() {
             if (result.message === 'success') {
                 showToast('Meta adicionada com sucesso!', 'success');
                 formMeta.reset();
-                await fetchMetas(); // Chama a função global
+                await fetchMetas(); 
                 await loadDashboard(); 
             } else { showToast(`Erro ao adicionar meta: ${result.error}`, 'error'); }
         } catch (error) { showToast(`Erro de conexão: ${error.message}`, 'error'); console.error('Erro ao adicionar meta:', error); }
     });
 
-    await fetchMetas(); // Chama a função global
+    await fetchMetas();
 }
 
 
