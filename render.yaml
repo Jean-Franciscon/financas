@@ -81,7 +81,7 @@ function createModal(title, message, type = 'info', onConfirm = null) {
 }
 
 // ===================================================================
-// 2. FUNÇÕES DE CARREGAMENTO E ATUALIZAÇÃO (LOAD/FETCH) - AGORA GLOBAIS
+// 2. FUNÇÕES DE CARREGAMENTO E ATUALIZAÇÃO (LOAD/FETCH) - GLOBAIS
 // ===================================================================
 
 async function loadDashboard() {
@@ -333,13 +333,13 @@ async function loadMetas() {
             if (result.message === 'success') {
                 showToast('Meta adicionada com sucesso!', 'success');
                 formMeta.reset();
-                await fetchMetas(); 
-                await loadDashboard(); 
+                await fetchMetas(); // Atualiza a lista na tela de Metas
+                await loadDashboard(); // Atualiza o Dashboard
             } else { showToast(`Erro ao adicionar meta: ${result.error}`, 'error'); }
         } catch (error) { showToast(`Erro de conexão: ${error.message}`, 'error'); console.error('Erro ao adicionar meta:', error); }
     });
 
-    await fetchMetas();
+    await fetchMetas(); // Carrega as metas na inicialização da seção
 }
 
 
