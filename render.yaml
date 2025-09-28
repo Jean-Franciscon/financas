@@ -11,7 +11,7 @@ window.closeModal = function() {
     }
 };
 
-function showToast(message, type = 'success') {
+window.showToast = function(message, type = 'success') {
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
     toast.innerHTML = `
@@ -29,9 +29,9 @@ function showToast(message, type = 'success') {
         toast.classList.remove('show');
         setTimeout(() => { toast.remove(); }, 300);
     }, 3000);
-}
+};
 
-function createModal(title, message, type = 'info', onConfirm = null) {
+window.createModal = function(title, message, type = 'info', onConfirm = null) {
     const existingModal = document.querySelector('.modal-overlay');
     if (existingModal) {
         existingModal.remove();
@@ -78,13 +78,104 @@ function createModal(title, message, type = 'info', onConfirm = null) {
             window.closeModal();
         }
     });
-}
+};
 
 // ===================================================================
 // 2. FUNÇÕES DE CARREGAMENTO E ATUALIZAÇÃO (LOAD/FETCH) - GLOBAIS
+// (AGORA USANDO WINDOW. para garantir o escopo)
 // ===================================================================
 
-async function loadDashboard() {
+window.fetchReceitas = async function() {
+    const tabelaReceitasBody = document.querySelector('#tabela-receitas tbody');
+    tabelaReceitasBody.innerHTML = '<tr><td colspan="5">Carregando receitas...</td></tr>';
+    try {
+        const response = await fetch(`${BACKEND_URL}/receitas`);
+        const data = await response.json();
+        if (data.message === 'success') {
+            tabelaReceitasBody.innerHTML = '';
+            data.data.forEach(receita => {
+                const row = tabelaReceitasBody.insertRow();
+                row.insertCell(0).textContent = receita.descricao;
+                row.insertCell(1).textContent = `R$ ${receita.valor.toFixed(2)}`;
+                row.insertCell(2).textContent = receita.data;
+                row.insertCell(3).textContent = receita.categoria;
+                const actionsCell = row.insertCell(4);
+                actionsCell.innerHTML = `<button class="btn-delete" onclick="window.deleteReceita(${receita.id})">Excluir</button>`;
+            });
+        } else { tabelaReceitasBody.innerHTML = `<tr><td colspan="5">Erro ao carregar receitas: ${data.error}</td></tr>`; }
+    } catch (error) { tabelaReceitasBody.innerHTML = `<tr><td colspan="5">Erro de conexão: ${error.message}</td></tr>`; console.error('Erro ao buscar receitas:', error); }
+};
+
+window.fetchDespesas = async function() {
+    const tabelaDespesasBody = document.querySelector('#tabela-despesas tbody');
+    tabelaDespesasBody.innerHTML = '<tr><td colspan="6">Carregando despesas...</td></tr>';
+    try {
+        const response = await fetch(`${BACKEND_URL}/despesas`);
+        const data = await response.json();
+        if (data.message === 'success') {
+            tabelaDespesasBody.innerHTML = '';
+            data.data.forEach(despesa => {
+                const row = tabelaDespesasBody.insertRow();
+                row.insertCell(0).textContent = despesa.descricao_original;
+                row.insertCell(1).textContent = `${despesa.numero_parcela}/${despesa.total_parcelas}`;
+                row.insertCell(2).textContent = `R$ ${despesa.valor.toFixed(2)}`;
+                row.insertCell(3).textContent = despesa.data_vencimento;
+                const statusCell = row.insertCell(4);
+                statusCell.textContent = despesa.status;
+                if (despesa.status === 'em aberto') {
+                    statusCell.innerHTML += ` <button class="btn-mark-paid" onclick="window.markParcelaAsPaid(${despesa.id})">Pagar</button>`;
+                }
+                const actionsCell = row.insertCell(5);
+                actionsCell.innerHTML = `<button class="btn-delete" onclick="window.deleteDespesa(${despesa.despesa_id})">Excluir Despesa</button>`;
+            });
+        } else { tabelaDespesasBody.innerHTML = `<tr><td colspan="6">Erro ao carregar despesas: ${data.error}</td></tr>`; }
+    } catch (error) { tabelaDespesasBody.innerHTML = `<tr><td colspan="6">Erro de conexão: ${error.message}</td></tr>`; console.error('Erro ao buscar despesas:', error); }
+};
+
+window.fetchMetas = async function() {
+    const metasCards = document.getElementById('metas-cards');
+    metasCards.innerHTML = '<p>Carregando metas...</p>';
+    try {
+        const response = await fetch(`${BACKEND_URL}/metas`);
+        const data = await response.json();
+        if (data.message === 'success') {
+            metasCards.innerHTML = '';
+            if (data.data.length === 0) { metasCards.innerHTML = '<p>Nenhuma meta cadastrada.</p>'; return; }
+            
+            data.data.forEach(meta => {
+                const valorAtual = meta.valor_atual || 0;
+                const valorMeta = meta.valor_meta;
+                const progresso = Math.min((valorAtual / valorMeta) * 100, 100);
+                const valorRestante = Math.max(valorMeta - valorAtual, 0);
+                
+                const metaCard = document.createElement('div');
+                metaCard.className = 'meta-card';
+                metaCard.innerHTML = `
+                    <div class="meta-header">
+                        <h4>${meta.descricao}</h4>
+                        <span class="meta-tipo">${meta.tipo}</span>
+                    </div>
+                    <div class="meta-valores">
+                        <div class="valor-info"><span class="label">Atual:</span><span class="valor">R$ ${valorAtual.toFixed(2)}</span></div>
+                        <div class="valor-info"><span class="label">Meta:</span><span class="valor">R$ ${valorMeta.toFixed(2)}</span></div>
+                        <div class="valor-info"><span class="label">Restante:</span><span class="valor valor-restante">R$ ${valorRestante.toFixed(2)}</span></div>
+                    </div>
+                    <div class="progress-container">
+                        <div class="progress-bar"><div class="progress-fill" style="width: ${progresso}%"></div></div>
+                        <span class="progress-text">${progresso.toFixed(1)}%</span>
+                    </div>
+                    <div class="meta-periodo"><small>Período: ${meta.data_inicio} até ${meta.data_fim}</small></div>
+                    <div class="meta-actions">
+                     <form class="form-adicionar-valor" onsubmit="window.adicionarValorMeta(event, ${meta.id})">\n                                <input type="number" step="0.01" placeholder="Valor a adicionar" required>\n                                <button type="submit">Adicionar</button>\n                            </form>\n                            <button class="btn-delete" onclick="window.deleteMeta(${meta.id})">Excluir Meta</button>
+                    </div>
+                `;
+                metasCards.appendChild(metaCard);
+            });
+        } else { metasCards.innerHTML = `<p>Erro ao carregar metas: ${data.error}</p>`; }
+    } catch (error) { metasCards.innerHTML = `<p>Erro de conexão: ${error.message}</p>`; console.error('Erro ao buscar metas:', error); }
+};
+
+window.loadDashboard = async function() {
     const dashboardContent = document.getElementById('dashboard-content');
     dashboardContent.innerHTML = 'Carregando dashboard...';
     try {
@@ -116,30 +207,9 @@ async function loadDashboard() {
             `;
         } else { dashboardContent.innerHTML = `<p>Erro ao carregar dashboard: ${data.error}</p>`; }
     } catch (error) { dashboardContent.innerHTML = `<p>Erro de conexão: ${error.message}</p>`; console.error('Erro ao carregar dashboard:', error); }
-}
+};
 
-async function fetchReceitas() {
-    const tabelaReceitasBody = document.querySelector('#tabela-receitas tbody');
-    tabelaReceitasBody.innerHTML = '<tr><td colspan="5">Carregando receitas...</td></tr>';
-    try {
-        const response = await fetch(`${BACKEND_URL}/receitas`);
-        const data = await response.json();
-        if (data.message === 'success') {
-            tabelaReceitasBody.innerHTML = '';
-            data.data.forEach(receita => {
-                const row = tabelaReceitasBody.insertRow();
-                row.insertCell(0).textContent = receita.descricao;
-                row.insertCell(1).textContent = `R$ ${receita.valor.toFixed(2)}`;
-                row.insertCell(2).textContent = receita.data;
-                row.insertCell(3).textContent = receita.categoria;
-                const actionsCell = row.insertCell(4);
-                actionsCell.innerHTML = `<button class="btn-delete" onclick="window.deleteReceita(${receita.id})">Excluir</button>`;
-            });
-        } else { tabelaReceitasBody.innerHTML = `<tr><td colspan="5">Erro ao carregar receitas: ${data.error}</td></tr>`; }
-    } catch (error) { tabelaReceitasBody.innerHTML = `<tr><td colspan="5">Erro de conexão: ${error.message}</td></tr>`; console.error('Erro ao buscar receitas:', error); }
-}
-
-async function loadReceitas() {
+window.loadReceitas = async function() {
     const receitasContent = document.getElementById('receitas-content');
     receitasContent.innerHTML = `
         <h3>Cadastrar Nova Receita</h3>
@@ -165,44 +235,18 @@ async function loadReceitas() {
             const response = await fetch(`${BACKEND_URL}/receitas`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ descricao, valor: parseFloat(valor), data, categoria }) });
             const result = await response.json();
            if (result.message === 'success') {
-                showToast('Receita adicionada com sucesso!', 'success');
+                window.showToast('Receita adicionada com sucesso!', 'success');
                 formReceita.reset();
-                await fetchReceitas();
-                await loadDashboard(); 
-            } else { showToast(`Erro ao adicionar receita: ${result.error}`, 'error'); }
-        } catch (error) { showToast(`Erro de conexão: ${error.message}`, 'error'); console.error('Erro ao adicionar receita:', error); }
+                await window.fetchReceitas();
+                await window.loadDashboard(); 
+            } else { window.showToast(`Erro ao adicionar receita: ${result.error}`, 'error'); }
+        } catch (error) { window.showToast(`Erro de conexão: ${error.message}`, 'error'); console.error('Erro ao adicionar receita:', error); }
     });
 
-    await fetchReceitas();
-}
+    await window.fetchReceitas();
+};
 
-async function fetchDespesas() {
-    const tabelaDespesasBody = document.querySelector('#tabela-despesas tbody');
-    tabelaDespesasBody.innerHTML = '<tr><td colspan="6">Carregando despesas...</td></tr>';
-    try {
-        const response = await fetch(`${BACKEND_URL}/despesas`);
-        const data = await response.json();
-        if (data.message === 'success') {
-            tabelaDespesasBody.innerHTML = '';
-            data.data.forEach(despesa => {
-                const row = tabelaDespesasBody.insertRow();
-                row.insertCell(0).textContent = despesa.descricao_original;
-                row.insertCell(1).textContent = `${despesa.numero_parcela}/${despesa.total_parcelas}`;
-                row.insertCell(2).textContent = `R$ ${despesa.valor.toFixed(2)}`;
-                row.insertCell(3).textContent = despesa.data_vencimento;
-                const statusCell = row.insertCell(4);
-                statusCell.textContent = despesa.status;
-                if (despesa.status === 'em aberto') {
-                    statusCell.innerHTML += ` <button class="btn-mark-paid" onclick="window.markParcelaAsPaid(${despesa.id})">Pagar</button>`;
-                }
-                const actionsCell = row.insertCell(5);
-                actionsCell.innerHTML = `<button class="btn-delete" onclick="window.deleteDespesa(${despesa.despesa_id})">Excluir Despesa</button>`;
-            });
-        } else { tabelaDespesasBody.innerHTML = `<tr><td colspan="6">Erro ao carregar despesas: ${data.error}</td></tr>`; }
-    } catch (error) { tabelaDespesasBody.innerHTML = `<tr><td colspan="6">Erro de conexão: ${error.message}</td></tr>`; console.error('Erro ao buscar despesas:', error); }
-}
-
-async function loadDespesas() {
+window.loadDespesas = async function() {
     const despesasContent = document.getElementById('despesas-content');
     despesasContent.innerHTML = `
         <h3>Cadastrar Nova Despesa</h3>
@@ -246,63 +290,20 @@ async function loadDespesas() {
             });
             const result = await response.json();
             if (result.message === 'success') {
-                showToast('Despesa adicionada com sucesso!', 'success');
+                window.showToast('Despesa adicionada com sucesso!', 'success');
                 formDespesa.reset();
                 parcelasFields.style.display = 'none';
-                await fetchDespesas();
-                await loadDashboard();
-            } else { showToast(`Erro ao adicionar despesa: ${result.error}`, 'error'); }
-        } catch (error) { showToast(`Erro de conexão: ${error.message}`, 'error'); }
+                await window.fetchDespesas();
+                await window.loadDashboard();
+            } else { window.showToast(`Erro ao adicionar despesa: ${result.error}`, 'error'); }
+        } catch (error) { window.showToast(`Erro de conexão: ${error.message}`, 'error'); }
     });
 
-    await fetchDespesas();
-    await loadDashboard();
-}
+    await window.fetchDespesas();
+    await window.loadDashboard();
+};
 
-async function fetchMetas() {
-    const metasCards = document.getElementById('metas-cards');
-    metasCards.innerHTML = '<p>Carregando metas...';
-    try {
-        const response = await fetch(`${BACKEND_URL}/metas`);
-        const data = await response.json();
-        if (data.message === 'success') {
-            metasCards.innerHTML = '';
-            if (data.data.length === 0) { metasCards.innerHTML = '<p>Nenhuma meta cadastrada.</p>'; return; }
-            
-            data.data.forEach(meta => {
-                const valorAtual = meta.valor_atual || 0;
-                const valorMeta = meta.valor_meta;
-                const progresso = Math.min((valorAtual / valorMeta) * 100, 100);
-                const valorRestante = Math.max(valorMeta - valorAtual, 0);
-                
-                const metaCard = document.createElement('div');
-                metaCard.className = 'meta-card';
-                metaCard.innerHTML = `
-                    <div class="meta-header">
-                        <h4>${meta.descricao}</h4>
-                        <span class="meta-tipo">${meta.tipo}</span>
-                    </div>
-                    <div class="meta-valores">
-                        <div class="valor-info"><span class="label">Atual:</span><span class="valor">R$ ${valorAtual.toFixed(2)}</span></div>
-                        <div class="valor-info"><span class="label">Meta:</span><span class="valor">R$ ${valorMeta.toFixed(2)}</span></div>
-                        <div class="valor-info"><span class="label">Restante:</span><span class="valor valor-restante">R$ ${valorRestante.toFixed(2)}</span></div>
-                    </div>
-                    <div class="progress-container">
-                        <div class="progress-bar"><div class="progress-fill" style="width: ${progresso}%"></div></div>
-                        <span class="progress-text">${progresso.toFixed(1)}%</span>
-                    </div>
-                    <div class="meta-periodo"><small>Período: ${meta.data_inicio} até ${meta.data_fim}</small></div>
-                    <div class="meta-actions">
-                     <form class="form-adicionar-valor" onsubmit="window.adicionarValorMeta(event, ${meta.id})">\n                                <input type="number" step="0.01" placeholder="Valor a adicionar" required>\n                                <button type="submit">Adicionar</button>\n                            </form>\n                            <button class="btn-delete" onclick="window.deleteMeta(${meta.id})">Excluir Meta</button>
-                    </div>
-                `;
-                metasCards.appendChild(metaCard);
-            });
-        } else { metasCards.innerHTML = `<p>Erro ao carregar metas: ${data.error}</p>`; }
-    } catch (error) { metasCards.innerHTML = `<p>Erro de conexão: ${error.message}</p>`; console.error('Erro ao buscar metas:', error); }
-}
-
-async function loadMetas() {
+window.loadMetas = async function() {
     const metasContent = document.getElementById('metas-content');
     metasContent.innerHTML = `
         <h3>Definir Nova Meta</h3>
@@ -331,75 +332,75 @@ async function loadMetas() {
             });
             const result = await response.json();
             if (result.message === 'success') {
-                showToast('Meta adicionada com sucesso!', 'success');
+                window.showToast('Meta adicionada com sucesso!', 'success');
                 formMeta.reset();
-                await fetchMetas(); // Chama a função global
-                await loadDashboard(); // Atualiza o Dashboard
-            } else { showToast(`Erro ao adicionar meta: ${result.error}`, 'error'); }
-        } catch (error) { showToast(`Erro de conexão: ${error.message}`, 'error'); console.error('Erro ao adicionar meta:', error); }
+                await window.fetchMetas(); 
+                await window.loadDashboard(); 
+            } else { window.showToast(`Erro ao adicionar meta: ${result.error}`, 'error'); }
+        } catch (error) { window.showToast(`Erro de conexão: ${error.message}`, 'error'); console.error('Erro ao adicionar meta:', error); }
     });
 
-    await fetchMetas(); // Carrega as metas na inicialização da seção
-}
+    await window.fetchMetas(); // Carrega as metas na inicialização da seção
+};
 
 
 // ===================================================================
-// 3. FUNÇÕES DE AÇÃO CRUD (Chamadas pelo HTML/onlick)
+// 3. FUNÇÕES DE AÇÃO CRUD (Chamadas pelo HTML/onlick) - JÁ ERAM GLOBAIS
 // ===================================================================
 
 window.deleteReceita = async function(id) {
-    createModal('Confirmar Exclusão', 'Tem certeza que deseja excluir esta receita? Esta ação não pode ser desfeita.', 'warning', async () => {
+    window.createModal('Confirmar Exclusão', 'Tem certeza que deseja excluir esta receita? Esta ação não pode ser desfeita.', 'warning', async () => {
         try {
             const response = await fetch(`${BACKEND_URL}/receitas/${id}`, { method: 'DELETE' });
             const result = await response.json();
             if (result.message === 'success') {
-                showToast('Receita excluída com sucesso!', 'success');
-                await fetchReceitas();
-                await loadDashboard(); 
-            } else { showToast(`Erro ao excluir receita: ${result.error}`, 'error'); }
-        } catch (error) { showToast(`Erro de conexão: ${error.message}`, 'error'); }
+                window.showToast('Receita excluída com sucesso!', 'success');
+                await window.fetchReceitas();
+                await window.loadDashboard(); 
+            } else { window.showToast(`Erro ao excluir receita: ${result.error}`, 'error'); }
+        } catch (error) { window.showToast(`Erro de conexão: ${error.message}`, 'error'); }
     });
 };
 
 window.markParcelaAsPaid = async function(id) {
-    createModal('Confirmar Pagamento', 'Tem certeza que deseja marcar esta parcela como paga?', 'info', async () => {
+    window.createModal('Confirmar Pagamento', 'Tem certeza que deseja marcar esta parcela como paga?', 'info', async () => {
         try {
             const response = await fetch(`${BACKEND_URL}/parcelas/${id}/status`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'paga' }) });
             const result = await response.json();
             if (result.message === 'success') {
-                showToast("Parcela marcada como paga com sucesso!", "success");
-                await fetchDespesas();
-                await loadDashboard();
-            } else { showToast(`Erro ao marcar parcela como paga: ${result.error}`, 'error'); }
-        } catch (error) { showToast(`Erro de conexão: ${error.message}`, 'error'); }
+                window.showToast("Parcela marcada como paga com sucesso!", "success");
+                await window.fetchDespesas();
+                await window.loadDashboard();
+            } else { window.showToast(`Erro ao marcar parcela como paga: ${result.error}`, 'error'); }
+        } catch (error) { window.showToast(`Erro de conexão: ${error.message}`, 'error'); }
     });
 };
 
 window.deleteDespesa = async function(id) {
-    createModal('Confirmar Exclusão', 'Tem certeza que deseja excluir esta despesa?', 'warning', async () => {
+    window.createModal('Confirmar Exclusão', 'Tem certeza que deseja excluir esta despesa?', 'warning', async () => {
         try {
             const response = await fetch(`${BACKEND_URL}/despesas/${id}`, { method: 'DELETE' });
             const result = await response.json();
             if (result.message === 'success') {
-                showToast('Despesa excluída com sucesso!', 'success');
-                await fetchDespesas();
-                await loadDashboard();
-            } else { showToast(`Erro ao excluir despesa: ${result.error}`, 'error'); }
-        } catch (error) { showToast(`Erro de conexão: ${error.message}`, 'error'); }
+                window.showToast('Despesa excluída com sucesso!', 'success');
+                await window.fetchDespesas();
+                await window.loadDashboard();
+            } else { window.showToast(`Erro ao excluir despesa: ${result.error}`, 'error'); }
+        } catch (error) { window.showToast(`Erro de conexão: ${error.message}`, 'error'); }
     });
 };
 
 window.deleteMeta = async function(id) {
-    createModal('Confirmar Exclusão', 'Tem certeza que deseja excluir esta meta?', 'warning', async () => {
+    window.createModal('Confirmar Exclusão', 'Tem certeza que deseja excluir esta meta?', 'warning', async () => {
         try {
             const response = await fetch(`${BACKEND_URL}/metas/${id}`, { method: 'DELETE' });
             const result = await response.json();
             if (result.message === 'success') {
-                showToast('Meta excluída com sucesso!', 'success');
-                await fetchMetas(); // Atualiza lista de Metas
-                await loadDashboard(); // Atualiza o Dashboard
-            } else { showToast(`Erro ao excluir meta: ${result.error}`, 'error'); }
-        } catch (error) { showToast(`Erro de conexão: ${error.message}`, 'error'); }
+                window.showToast('Meta excluída com sucesso!', 'success');
+                await window.fetchMetas(); // Atualiza lista de Metas
+                await window.loadDashboard(); // Atualiza o Dashboard
+            } else { window.showToast(`Erro ao excluir meta: ${result.error}`, 'error'); }
+        } catch (error) { window.showToast(`Erro de conexão: ${error.message}`, 'error'); }
     });
 };
 
@@ -408,7 +409,7 @@ window.adicionarValorMeta = async function(event, metaId) {
     const form = event.target;
     const valorAdicional = parseFloat(form.querySelector('input').value);
     
-    if (valorAdicional <= 0) { showToast('Por favor, insira um valor positivo.', 'error'); return; }
+    if (valorAdicional <= 0) { window.showToast('Por favor, insira um valor positivo.', 'error'); return; }
     
     try {
         const response = await fetch(`${BACKEND_URL}/metas/${metaId}/valor`, {
@@ -418,12 +419,12 @@ window.adicionarValorMeta = async function(event, metaId) {
         });
         const result = await response.json();
         if (result.message === 'success') {
-            showToast(`R$ ${valorAdicional.toFixed(2)} adicionado à meta com sucesso!`, 'success');
+            window.showToast(`R$ ${valorAdicional.toFixed(2)} adicionado à meta com sucesso!`, 'success');
             form.reset();
-            await fetchMetas(); // Atualiza lista de Metas
-            await loadDashboard(); // Atualiza o Dashboard
-        } else { showToast(`Erro ao adicionar valor à meta: ${result.error}`, 'error'); }
-    } catch (error) { showToast(`Erro de conexão: ${error.message}`, 'error'); }
+            await window.fetchMetas(); // Atualiza lista de Metas
+            await window.loadDashboard(); // Atualiza o Dashboard
+        } else { window.showToast(`Erro ao adicionar valor à meta: ${result.error}`, 'error'); }
+    } catch (error) { window.showToast(`Erro de conexão: ${error.message}`, 'error'); }
 };
 
 
@@ -433,31 +434,30 @@ window.adicionarValorMeta = async function(event, metaId) {
 
 document.addEventListener('DOMContentLoaded', () => {
     
-    // VARIÁVEIS DOM LOCAIS
     const navLinks = document.querySelectorAll('nav ul li a');
     const sections = document.querySelectorAll('main section');
 
-    // Funções de carregamento de conteúdo (AGORA CHAMAM AS FUNÇÕES GLOBAIS)
     async function loadContent(sectionId) {
+        // Todas as funções load estão agora no objeto window
         switch (sectionId) {
             case 'dashboard':
-                await loadDashboard();
+                await window.loadDashboard();
                 break;
             case 'receitas':
-                await loadReceitas();
+                await window.loadReceitas();
                 break;
             case 'despesas':
-                await loadDespesas();
+                await window.loadDespesas();
                 break;
             case 'metas':
-                await loadMetas();
+                await window.loadMetas();
                 break;
             default:
                 break;
         }
     }
 
-    // 3.4. Lógica de Navegação e Inicialização
+    // Lógica de Navegação
     navLinks.forEach(link => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
