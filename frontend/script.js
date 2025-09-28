@@ -1,11 +1,10 @@
 // ===================================================================
 // 1. VARIÁVEIS E FUNÇÕES GLOBAIS DE SUPORTE (MODAL, TOAST, URL)
-//    Definidas no topo para garantir que todo o código as acesse.
 // ===================================================================
 
 const BACKEND_URL = 'https://financas-pessoais-backend-0dbj.onrender.com';
 
-// FUNÇÃO GLOBAL DE FECHAMENTO DE MODAL (Solução para o botão 'X' e 'Cancelar')
+// FUNÇÃO GLOBAL DE FECHAMENTO DE MODAL
 window.closeModal = function() {
     const existingModal = document.querySelector('.modal-overlay');
     if (existingModal) {
@@ -70,7 +69,6 @@ function createModal(title, message, type = 'info', onConfirm = null) {
     
     setTimeout(() => { modalOverlay.classList.add('show'); modal.classList.add('show'); }, 10);
     
-    // Configura a função de confirmação para FECHAR o modal após a ação da API
     if (onConfirm) {
         document.getElementById('confirm-action-btn').onclick = async () => {
             await onConfirm(); 
@@ -86,11 +84,43 @@ function createModal(title, message, type = 'info', onConfirm = null) {
 }
 
 // ===================================================================
-// 2. FUNÇÕES DE ATUALIZAÇÃO DE DADOS (FETCH...) - MOVIDAS PARA O ESCOPO GLOBAL
-//    Resolve o erro "is not defined" e permite a atualização imediata.
+// 2. FUNÇÕES DE ATUALIZAÇÃO DE DADOS (FETCH...) E DE CARREGAMENTO (LOAD...) - ELEVADAS
+//    Estas funções devem ser acessíveis pelas ações globais (delete, adicionar).
 // ===================================================================
 
-// Funções de carregamento (AGORA DEFINIDAS NO TOPO, mas usam o DOM no runtime)
+async function loadDashboard() {
+    const dashboardContent = document.getElementById('dashboard-content');
+    dashboardContent.innerHTML = 'Carregando dashboard...';
+    try {
+        const response = await fetch(`${BACKEND_URL}/dashboard`);
+        const data = await response.json();
+        if (data.message === 'success') {
+            const { totalReceitas, totalDespesas, saldoAtual, metas } = data.data;
+            dashboardContent.innerHTML = `
+                <div class="dashboard-grid">
+                    <div class="dashboard-card">
+                        <h3>Total de Receitas</h3>
+                        <p>R$ ${totalReceitas.toFixed(2)}</p>
+                    </div>
+                    <div class="dashboard-card despesas">
+                        <h3>Total de Despesas</h3>
+                        <p>R$ ${totalDespesas.toFixed(2)}</p>
+                    </div>
+                    <div class="dashboard-card saldo">
+                        <h3>Saldo Atual</h3>
+                        <p>R$ ${saldoAtual.toFixed(2)}</p>
+                    </div>
+                    <div class="dashboard-card metas-summary">
+                        <h3>Metas Financeiras</h3>
+                        <ul>
+                            ${metas.map(meta => `<li>${meta.descricao}: <span>R$ ${meta.valor_atual.toFixed(2)} / R$ ${meta.valor_meta.toFixed(2)}</span></li>`).join("")}
+                        </ul>
+                    </div>
+                </div>
+            `;
+        } else { dashboardContent.innerHTML = `<p>Erro ao carregar dashboard: ${data.error}</p>`; }
+    } catch (error) { dashboardContent.innerHTML = `<p>Erro de conexão: ${error.message}</p>`; console.error('Erro ao carregar dashboard:', error); }
+}
 
 async function fetchReceitas() {
     const tabelaReceitasBody = document.querySelector('#tabela-receitas tbody');
@@ -111,6 +141,43 @@ async function fetchReceitas() {
             });
         } else { tabelaReceitasBody.innerHTML = `<tr><td colspan="5">Erro ao carregar receitas: ${data.error}</td></tr>`; }
     } catch (error) { tabelaReceitasBody.innerHTML = `<tr><td colspan="5">Erro de conexão: ${error.message}</td></tr>`; console.error('Erro ao buscar receitas:', error); }
+}
+
+async function loadReceitas() {
+    const receitasContent = document.getElementById('receitas-content');
+    receitasContent.innerHTML = `
+        <h3>Cadastrar Nova Receita</h3>
+        <form id="form-receita">
+            <div><label for="receita-descricao">Descrição:</label><input type="text" id="receita-descricao" required></div>
+            <div><label for="receita-valor">Valor:</label><input type="number" id="receita-valor" step="0.01" required></div>
+            <div><label for="receita-data">Data:</label><input type="date" id="receita-data" required></div>
+            <div><label for="receita-categoria">Categoria:</label><input type="text" id="receita-categoria" required></div>
+            <button type="submit">Adicionar Receita</button>
+        </form>
+        <h3>Histórico de Receitas</h3>
+        <table id="tabela-receitas">
+            <thead><tr><th>Descrição</th><th>Valor</th><th>Data</th><th>Categoria</th><th>Ações</th></tr></thead>
+            <tbody></tbody>
+        </table>
+    `;
+
+    const formReceita = document.getElementById('form-receita');
+    formReceita.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const [descricao, valor, data, categoria] = ['receita-descricao', 'receita-valor', 'receita-data', 'receita-categoria'].map(id => document.getElementById(id).value);
+        try {
+            const response = await fetch(`${BACKEND_URL}/receitas`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ descricao, valor: parseFloat(valor), data, categoria }) });
+            const result = await response.json();
+           if (result.message === 'success') {
+                showToast('Receita adicionada com sucesso!', 'success');
+                formReceita.reset();
+                await fetchReceitas();
+                await loadDashboard(); 
+            } else { showToast(`Erro ao adicionar receita: ${result.error}`, 'error'); }
+        } catch (error) { showToast(`Erro de conexão: ${error.message}`, 'error'); console.error('Erro ao adicionar receita:', error); }
+    });
+
+    await fetchReceitas();
 }
 
 async function fetchDespesas() {
@@ -139,51 +206,108 @@ async function fetchDespesas() {
     } catch (error) { tabelaDespesasBody.innerHTML = `<tr><td colspan="6">Erro de conexão: ${error.message}</td></tr>`; console.error('Erro ao buscar despesas:', error); }
 }
 
-async function fetchMetas() {
-    const metasCards = document.getElementById('metas-cards');
-    metasCards.innerHTML = '<p>Carregando metas...</p>';
-    try {
-        const response = await fetch(`${BACKEND_URL}/metas`);
-        const data = await response.json();
-        if (data.message === 'success') {
-            metasCards.innerHTML = '';
-            if (data.data.length === 0) { metasCards.innerHTML = '<p>Nenhuma meta cadastrada.</p>'; return; }
-            
-            data.data.forEach(meta => {
-                const valorAtual = meta.valor_atual || 0;
-                const valorMeta = meta.valor_meta;
-                const progresso = Math.min((valorAtual / valorMeta) * 100, 100);
-                const valorRestante = Math.max(valorMeta - valorAtual, 0);
-                
-                const metaCard = document.createElement('div');
-                metaCard.className = 'meta-card';
-                metaCard.innerHTML = `
-                    <div class="meta-header">
-                        <h4>${meta.descricao}</h4>
-                        <span class="meta-tipo">${meta.tipo}</span>
-                    </div>
-                    <div class="meta-valores">
-                        <div class="valor-info"><span class="label">Atual:</span><span class="valor">R$ ${valorAtual.toFixed(2)}</span></div>
-                        <div class="valor-info"><span class="label">Meta:</span><span class="valor">R$ ${valorMeta.toFixed(2)}</span></div>
-                        <div class="valor-info"><span class="label">Restante:</span><span class="valor valor-restante">R$ ${valorRestante.toFixed(2)}</span></div>
-                    </div>
-                    <div class="progress-container">
-                        <div class="progress-bar"><div class="progress-fill" style="width: ${progresso}%"></div></div>
-                        <span class="progress-text">${progresso.toFixed(1)}%</span>
-                    </div>
-                    <div class="meta-periodo"><small>Período: ${meta.data_inicio} até ${meta.data_fim}</small></div>
-                    <div class="meta-actions">
-                     <form class="form-adicionar-valor" onsubmit="window.adicionarValorMeta(event, ${meta.id})">\n                                <input type="number" step="0.01" placeholder="Valor a adicionar" required>\n                                <button type="submit">Adicionar</button>\n                            </form>\n                            <button class="btn-delete" onclick="window.deleteMeta(${meta.id})">Excluir Meta</button>
-                    </div>
-                `;
-                metasCards.appendChild(metaCard);
+async function loadDespesas() {
+    const despesasContent = document.getElementById('despesas-content');
+    // HTML de formulário e tabela...
+    despesasContent.innerHTML = `
+        <h3>Cadastrar Nova Despesa</h3>
+        <form id="form-despesa">
+            <div><label for="despesa-descricao">Descrição:</label><input type="text" id="despesa-descricao" required></div>
+            <div><label for="despesa-valor">Valor:</label><input type="number" id="despesa-valor" step="0.01" required></div>
+            <div><label for="despesa-data">Data:</label><input type="date" id="despesa-data" required></div>
+            <div><label for="despesa-categoria">Categoria:</label><input type="text" id="despesa-categoria" required></div>
+            <div><label for="despesa-parcelada">Despesa Parcelada?</label><input type="checkbox" id="despesa-parcelada"></div>
+            <div id="parcelas-fields" style="display: none;">
+                <label for="despesa-parcelas-total">Total de Parcelas:</label><input type="number" id="despesa-parcelas-total" min="1" value="1">
+                <label for="despesa-data-primeira-parcela">Data da 1ª Parcela:</label><input type="date" id="despesa-data-primeira-parcela">
+            </div>
+            <button type="submit">Adicionar Despesa</button>
+        </form>
+        <h3>Histórico de Despesas</h3>
+        <table id="tabela-despesas">
+            <thead><tr><th>Descrição</th><th>Parcela</th><th>Valor da Parcela</th><th>Vencimento</th><th>Status</th><th>Ações</th></tr></thead>
+            <tbody></tbody>
+        </table>
+    `;
+
+    const formDespesa = document.getElementById('form-despesa');
+    const despesaParceladaCheckbox = document.getElementById('despesa-parcelada');
+    const parcelasFields = document.getElementById('parcelas-fields');
+
+    despesaParceladaCheckbox.addEventListener('change', () => {
+        parcelasFields.style.display = despesaParceladaCheckbox.checked ? 'block' : 'none';
+    });
+
+    formDespesa.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const [descricao, valor, data, categoria, parcelas_total, data_primeira_parcela] = ['despesa-descricao', 'despesa-valor', 'despesa-data', 'despesa-categoria', 'despesa-parcelas-total', 'despesa-data-primeira-parcela'].map(id => document.getElementById(id).value);
+        const parcelada = despesaParceladaCheckbox.checked ? 1 : 0;
+        
+        try {
+            const response = await fetch(`${BACKEND_URL}/despesas`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ descricao, valor: parseFloat(valor), data, categoria, parcelada, parcelas_total, data_primeira_parcela })
             });
-        } else { metasCards.innerHTML = `<p>Erro ao carregar metas: ${data.error}</p>`; }
-    } catch (error) { metasCards.innerHTML = `<p>Erro de conexão: ${error.message}</p>`; console.error('Erro ao buscar metas:', error); }
+            const result = await response.json();
+            if (result.message === 'success') {
+                showToast('Despesa adicionada com sucesso!', 'success');
+                formDespesa.reset();
+                parcelasFields.style.display = 'none';
+                await fetchDespesas();
+                await loadDashboard();
+            } else { showToast(`Erro ao adicionar despesa: ${result.error}`, 'error'); }
+        } catch (error) { showToast(`Erro de conexão: ${error.message}`, 'error'); }
+    });
+
+    await fetchDespesas();
+    await loadDashboard();
 }
 
+async function loadMetas() {
+    const metasContent = document.getElementById('metas-content');
+    // HTML de formulário e cards...
+    metasContent.innerHTML = `
+        <h3>Definir Nova Meta</h3>
+        <form id="form-meta">
+            <div><label for="meta-descricao">Descrição:</label><input type="text" id="meta-descricao" required></div>
+            <div><label for="meta-valor">Valor da Meta:</label><input type="number" id="meta-valor" step="0.01" required></div>
+            <div><label for="meta-tipo">Tipo:</label><select id="meta-tipo"><option value="mensal">Mensal</option><option value="anual">Anual</option></select></div>
+            <div><label for="meta-data-inicio">Data de Início:</label><input type="date" id="meta-data-inicio" required></div>
+            <div><label for="meta-data-fim">Data de Fim:</label><input type="date" id="meta-data-fim" required></div>
+            <button type="submit">Adicionar Meta</button>
+        </form>
+        <h3>Metas Atuais</h3>
+        <div id="metas-cards"></div>
+    `;
+
+    const formMeta = document.getElementById('form-meta');
+    formMeta.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const [descricao, valor_meta, tipo, data_inicio, data_fim] = ['meta-descricao', 'meta-valor', 'meta-tipo', 'meta-data-inicio', 'meta-data-fim'].map(id => document.getElementById(id).value);
+        
+        try {
+            const response = await fetch(`${BACKEND_URL}/metas`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ descricao, valor_meta: parseFloat(valor_meta), tipo, data_inicio, data_fim })
+            });
+            const result = await response.json();
+            if (result.message === 'success') {
+                showToast('Meta adicionada com sucesso!', 'success');
+                formMeta.reset();
+                await fetchMetas();
+                await loadDashboard(); 
+            } else { showToast(`Erro ao adicionar meta: ${result.error}`, 'error'); }
+        } catch (error) { showToast(`Erro de conexão: ${error.message}`, 'error'); console.error('Erro ao adicionar meta:', error); }
+    });
+
+    await fetchMetas();
+}
+
+
 // ===================================================================
-// 3. FUNÇÕES DE AÇÃO CRUD (Chamadas pelo HTML/onlick)
+// 4. FUNÇÕES DE AÇÃO CRUD (Chamadas pelo HTML/onlick)
 // ===================================================================
 
 window.deleteReceita = async function(id) {
@@ -267,7 +391,7 @@ window.adicionarValorMeta = async function(event, metaId) {
 
 
 // ===================================================================
-// 4. INICIALIZAÇÃO E FUNÇÕES DE CARREGAMENTO DE SEÇÕES (DENTRO DO DOMContentLoaded)
+// 5. LÓGICA DE NAVEGAÇÃO E INICIALIZAÇÃO (DENTRO DO DOMContentLoaded)
 // ===================================================================
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -276,7 +400,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const navLinks = document.querySelectorAll('nav ul li a');
     const sections = document.querySelectorAll('main section');
 
-    // Funções de carregamento de conteúdo
+    // Funções de carregamento de conteúdo (AGORA CHAMAM AS FUNÇÕES GLOBAIS)
     async function loadContent(sectionId) {
         switch (sectionId) {
             case 'dashboard':
@@ -295,181 +419,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 break;
         }
     }
-
-    // --- Funções para carregar e exibir dados --- //
-    // NOTA: As funções fetch... são chamadas aqui, mas definidas no topo.
-
-    async function loadDashboard() {
-        const dashboardContent = document.getElementById('dashboard-content');
-        dashboardContent.innerHTML = 'Carregando dashboard...';
-        try {
-            const response = await fetch(`${BACKEND_URL}/dashboard`);
-            const data = await response.json();
-            if (data.message === 'success') {
-                const { totalReceitas, totalDespesas, saldoAtual, metas } = data.data;
-                dashboardContent.innerHTML = `
-                    <div class="dashboard-grid">
-                        <div class="dashboard-card">
-                            <h3>Total de Receitas</h3>
-                            <p>R$ ${totalReceitas.toFixed(2)}</p>
-                        </div>
-                        <div class="dashboard-card despesas">
-                            <h3>Total de Despesas</h3>
-                            <p>R$ ${totalDespesas.toFixed(2)}</p>
-                        </div>
-                        <div class="dashboard-card saldo">
-                            <h3>Saldo Atual</h3>
-                            <p>R$ ${saldoAtual.toFixed(2)}</p>
-                        </div>
-                        <div class="dashboard-card metas-summary">
-                            <h3>Metas Financeiras</h3>
-                            <ul>
-                                ${metas.map(meta => `<li>${meta.descricao}: <span>R$ ${meta.valor_atual.toFixed(2)} / R$ ${meta.valor_meta.toFixed(2)}</span></li>`).join("")}
-                            </ul>
-                        </div>
-                    </div>
-                `;
-            } else { dashboardContent.innerHTML = `<p>Erro ao carregar dashboard: ${data.error}</p>`; }
-        } catch (error) { dashboardContent.innerHTML = `<p>Erro de conexão: ${error.message}</p>`; console.error('Erro ao carregar dashboard:', error); }
-    }
-
-    async function loadReceitas() {
-        const receitasContent = document.getElementById('receitas-content');
-        // HTML de formulário e tabela...
-        receitasContent.innerHTML = `
-            <h3>Cadastrar Nova Receita</h3>
-            <form id="form-receita">
-                <div><label for="receita-descricao">Descrição:</label><input type="text" id="receita-descricao" required></div>
-                <div><label for="receita-valor">Valor:</label><input type="number" id="receita-valor" step="0.01" required></div>
-                <div><label for="receita-data">Data:</label><input type="date" id="receita-data" required></div>
-                <div><label for="receita-categoria">Categoria:</label><input type="text" id="receita-categoria" required></div>
-                <button type="submit">Adicionar Receita</button>
-            </form>
-            <h3>Histórico de Receitas</h3>
-            <table id="tabela-receitas">
-                <thead><tr><th>Descrição</th><th>Valor</th><th>Data</th><th>Categoria</th><th>Ações</th></tr></thead>
-                <tbody></tbody>
-            </table>
-        `;
-
-        const formReceita = document.getElementById('form-receita');
-        formReceita.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const [descricao, valor, data, categoria] = ['receita-descricao', 'receita-valor', 'receita-data', 'receita-categoria'].map(id => document.getElementById(id).value);
-            try {
-                const response = await fetch(`${BACKEND_URL}/receitas`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ descricao, valor: parseFloat(valor), data, categoria }) });
-                const result = await response.json();
-               if (result.message === 'success') {
-                    showToast('Receita adicionada com sucesso!', 'success');
-                    formReceita.reset();
-                    await fetchReceitas();
-                    await loadDashboard(); 
-                } else { showToast(`Erro ao adicionar receita: ${result.error}`, 'error'); }
-            } catch (error) { showToast(`Erro de conexão: ${error.message}`, 'error'); console.error('Erro ao adicionar receita:', error); }
-        });
-
-        await fetchReceitas();
-    }
-    
-    async function loadDespesas() {
-        const despesasContent = document.getElementById('despesas-content');
-        // HTML de formulário e tabela...
-        despesasContent.innerHTML = `
-            <h3>Cadastrar Nova Despesa</h3>
-            <form id="form-despesa">
-                <div><label for="despesa-descricao">Descrição:</label><input type="text" id="despesa-descricao" required></div>
-                <div><label for="despesa-valor">Valor:</label><input type="number" id="despesa-valor" step="0.01" required></div>
-                <div><label for="despesa-data">Data:</label><input type="date" id="despesa-data" required></div>
-                <div><label for="despesa-categoria">Categoria:</label><input type="text" id="despesa-categoria" required></div>
-                <div><label for="despesa-parcelada">Despesa Parcelada?</label><input type="checkbox" id="despesa-parcelada"></div>
-                <div id="parcelas-fields" style="display: none;">
-                    <label for="despesa-parcelas-total">Total de Parcelas:</label><input type="number" id="despesa-parcelas-total" min="1" value="1">
-                    <label for="despesa-data-primeira-parcela">Data da 1ª Parcela:</label><input type="date" id="despesa-data-primeira-parcela">
-                </div>
-                <button type="submit">Adicionar Despesa</button>
-            </form>
-            <h3>Histórico de Despesas</h3>
-            <table id="tabela-despesas">
-                <thead><tr><th>Descrição</th><th>Parcela</th><th>Valor da Parcela</th><th>Vencimento</th><th>Status</th><th>Ações</th></tr></thead>
-                <tbody></tbody>
-            </table>
-        `;
-
-        const formDespesa = document.getElementById('form-despesa');
-        const despesaParceladaCheckbox = document.getElementById('despesa-parcelada');
-        const parcelasFields = document.getElementById('parcelas-fields');
-
-        despesaParceladaCheckbox.addEventListener('change', () => {
-            parcelasFields.style.display = despesaParceladaCheckbox.checked ? 'block' : 'none';
-        });
-
-        formDespesa.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const [descricao, valor, data, categoria, parcelas_total, data_primeira_parcela] = ['despesa-descricao', 'despesa-valor', 'despesa-data', 'despesa-categoria', 'despesa-parcelas-total', 'despesa-data-primeira-parcela'].map(id => document.getElementById(id).value);
-            const parcelada = despesaParceladaCheckbox.checked ? 1 : 0;
-            
-            try {
-                const response = await fetch(`${BACKEND_URL}/despesas`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ descricao, valor: parseFloat(valor), data, categoria, parcelada, parcelas_total, data_primeira_parcela })
-                });
-                const result = await response.json();
-                if (result.message === 'success') {
-                    showToast('Despesa adicionada com sucesso!', 'success');
-                    formDespesa.reset();
-                    parcelasFields.style.display = 'none';
-                    await fetchDespesas();
-                    await loadDashboard();
-                } else { showToast(`Erro ao adicionar despesa: ${result.error}`, 'error'); }
-            } catch (error) { showToast(`Erro de conexão: ${error.message}`, 'error'); console.error('Erro ao adicionar despesa:', error); }
-        });
-
-        await fetchDespesas();
-        await loadDashboard();
-    }
-
-    async function loadMetas() {
-        const metasContent = document.getElementById('metas-content');
-        // HTML de formulário e cards...
-        metasContent.innerHTML = `
-            <h3>Definir Nova Meta</h3>
-            <form id="form-meta">
-                <div><label for="meta-descricao">Descrição:</label><input type="text" id="meta-descricao" required></div>
-                <div><label for="meta-valor">Valor da Meta:</label><input type="number" id="meta-valor" step="0.01" required></div>
-                <div><label for="meta-tipo">Tipo:</label><select id="meta-tipo"><option value="mensal">Mensal</option><option value="anual">Anual</option></select></div>
-                <div><label for="meta-data-inicio">Data de Início:</label><input type="date" id="meta-data-inicio" required></div>
-                <div><label for="meta-data-fim">Data de Fim:</label><input type="date" id="meta-data-fim" required></div>
-                <button type="submit">Adicionar Meta</button>
-            </form>
-            <h3>Metas Atuais</h3>
-            <div id="metas-cards"></div>
-        `;
-
-        const formMeta = document.getElementById('form-meta');
-        formMeta.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const [descricao, valor_meta, tipo, data_inicio, data_fim] = ['meta-descricao', 'meta-valor', 'meta-tipo', 'meta-data-inicio', 'meta-data-fim'].map(id => document.getElementById(id).value);
-            
-            try {
-                const response = await fetch(`${BACKEND_URL}/metas`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ descricao, valor_meta: parseFloat(valor_meta), tipo, data_inicio, data_fim })
-                });
-                const result = await response.json();
-                if (result.message === 'success') {
-                    showToast('Meta adicionada com sucesso!', 'success');
-                    formMeta.reset();
-                    await fetchMetas();
-                    await loadDashboard(); 
-                } else { showToast(`Erro ao adicionar meta: ${result.error}`, 'error'); }
-            } catch (error) { showToast(`Erro de conexão: ${error.message}`, 'error'); console.error('Erro ao adicionar meta:', error); }
-        });
-
-        await fetchMetas();
-    }
-
 
     // 3.4. Lógica de Navegação e Inicialização
     navLinks.forEach(link => {
