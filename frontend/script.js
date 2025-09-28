@@ -653,7 +653,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         try {
-            const response = await fetch(`https://financas-pessoais-backend-0dbj.onrender.com//metas/${metaId}/valor`, {
+            const response = await fetch(`https://financas-pessoais-backend-0dbj.onrender.com/metas/${metaId}/valor`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json'
